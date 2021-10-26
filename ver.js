@@ -45,6 +45,22 @@
 		el.onerror = e => rej(e);
 	});
 	
+	let loadScript = (src, p = {}) => new Promise((res, rej) => {
+		let parent = p.parent || document.querySelector('head');
+		
+		let script = document.createElement('script');
+		script.type = 'text/javascript';
+		script.async = p.async||false;
+		script.src = src
+		
+		parent.append(script);
+		
+		script.onload = e => res(e);
+		script.onerror = e => rej(e);
+	});
+	
+	let loader = { loadImage, loadScript, cache: new WeakMap() };
+	
 	
 	class EventEmitter {
 		constructor() {
@@ -611,9 +627,9 @@
 	
 	
 	ver = {
-		version: '1.0.1',
+		version: '1.1.0',
 		
-		codeShell, random, JSONcopy, loadImage, generateImage,
+		codeShell, random, JSONcopy, loader, loadImage, loadScript, generateImage,
 		EventEmitter, Scene, Child,
 		Vector2, vec2, VectorN, vecN,
 		CameraImitationCanvas, CanvasLayer

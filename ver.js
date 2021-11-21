@@ -545,7 +545,7 @@
 			let el = '';
 			
 			for(let i of layers) el += `<canvas style="width:100%; height:100%; grid-area:1/1/1/1;" id="${i}"></canvas>`;
-			el += `<div class="slot" style="width:100%; height:100%; z-index:; overflow: auto; grid-area:1/1/1/1; align-self:${this.getAttribute('align-slot')||'center'}; justify-self:${this.getAttribute('justify-slot')||'center'};"><slot></slot></div>`;
+			el += `<div class="slot" style="z-index: 10; width:100%; height:100%; overflow: auto; grid-area:1/1/1/1; align-self:${this.getAttribute('align-slot')||'center'}; justify-self:${this.getAttribute('justify-slot')||'center'};"><slot></slot></div>`;
 			
 			tmp.innerHTML += el;
 			root.append(tmp.content.cloneNode(true));
@@ -611,7 +611,7 @@
 	
 	
 	ver = {
-		version: '1.0.0',
+		version: '1.0.1',
 		
 		codeShell, random, JSONcopy, loadImage, generateImage,
 		EventEmitter, Scene, Child,

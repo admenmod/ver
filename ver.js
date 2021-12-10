@@ -15,6 +15,7 @@
 	// helpers
 	let u = a => a !== undefined;
 	let setConstantProperty = (o, p, v) => Object.defineProperty(o, p, { value: v, enumerable: true });
+	let setHiddenProperty = (o, p, v) => Object.defineProperty(o, p, { value: v, writable: true, configurable: true });
 	let setToStringTeg = (o, v) => Object.defineProperty(o, Symbol.toStringTag, { value: v, configurable: true });
 	let setGetter = (o, p, getter) => Object.defineProperty(o, p, { get: getter, enumerable: true, configurable: true });
 	let injectingEventEmitterMethods = o => {
@@ -27,7 +28,7 @@
 	
 	let generateImage = (w, h, cb) => new Promise((res, rej) => {
 		let cvs = generateImage.canvas || (generateImage.canvas = document.createElement('canvas'));
-		ctx = cvs.getContext('2d');
+		let ctx = cvs.getContext('2d');
 		cvs.width = w; cvs.height = h;
 		
 		cb(ctx, vec2(w, h));
@@ -66,6 +67,8 @@
 		constructor() {
 			Object.defineProperty(this, '_events', { value: {} });
 		}
+		
+		once(type, handler) { return this.on(type, handler, 1); }
 		on(type, handler, once = 0) {
 			if(typeof handler !== 'function') return Error('Invalid argument "handler"');
 			
@@ -74,7 +77,7 @@
 				Object.defineProperty(this._events[type], 'store', { value: {} });
 				Object.defineProperty(this._events[type], 'once', { value: [] });
 				
-					let store = this._events[type].store;
+				let store = this._events[type].store;
 				store.type = type;
 				store.self = store.emitter = this;
 			};
@@ -84,7 +87,7 @@
 			
 			return this;
 		}
-		once(type, handler) { return this.on(type, handler, 1); }
+		
 		off(type, handler) {
 			if(!type) for(let i in this._events) delete this._events[i];
 			if(!this._events[type]) return this;
@@ -98,6 +101,7 @@
 			};
 			return this;
 		}
+		
 		emit(type, ...args) {
 			if(!this._events[type]) return false;
 			
@@ -127,7 +131,7 @@
 			this._api = new EventEmitter();
 			this._api.preload = (...proms) => this.proms = this.proms.concat(proms);
 			
-			this._api.init = this._api.load = this._api.exit = this._api.updata = null;
+			this._api.init = this._api.load = this._api.exit = this._api.update = null;
 			
 			setGetter(this._api, 'name', () => this.name);
 			setGetter(this._api, 'isLoaded', () => this.isLoaded);
@@ -172,9 +176,9 @@
 			this._api.emit('exit');
 		}
 		
-		updata(dt) {
-			this._api.updata?.(dt);
-			this._api.emit('updata', dt);
+		update(dt) {
+			this._api.update?.(dt);
+			this._api.emit('update', dt);
 		}
 		
 		remove() {
@@ -189,12 +193,12 @@
 			if(~l) Scene.active_scenes.splice(l, 1);
 		}
 		
-		static scenes = {}
-		static active_scenes = []
+		static scenes = {};
+		static active_scenes = [];
 		
-		static updata(dt) {
+		static update(dt) {
 			for(let i = 0; i < this.active_scenes.length; i++) {
-				this.active_scenes[i].updata(dt);
+				this.active_scenes[i].update(dt);
 			};
 		}
 		
@@ -214,27 +218,66 @@
 			this._parent = null;
 			this._children = [];
 		}
-		appendChild(child) {
-			if(child._parent) child._parent.removeChild(child);
-			child._parent = this;
-			this._children.push(child);
-		}
-		removeChild(child) {
-			if(child instanceof Child) {
-				let l = this._children.indexOf(child);
-				if(~l) this._children.splice(l, 1)[0]._parent = null;
-			};
-		}
+		
+		getParent() { return this._parent; }
 		getChildren() { return [...this._children]; };
+		getRootNode() {
+			let arr = this.getChainParent();
+			return arr[arr.length-1] || this;
+		}
+		
 		getChainParent() {
 			let arr = [];
 			let pr = this._parent;
-			for(let i = 0; pr && i < 100; i++) {
+			for(let i = 0; pr && i < Child.MAX_CHILDREN; i++) {
 				arr.push(pr);
 				pr = pr._parent;
 			};
 			return arr;
 		}
+		
+		appendChild(node) {
+			if(node._parent !== null) return Error('This node already has a parent');
+			if(this._children.includes(node)) console.warn('This node already is child');
+			
+			let root = this.getRootNode();
+			if(root === node) console.warn('This node is root node of current tree');
+			
+			node._parent = this;
+			this._children.push(node);
+			
+			node.emit('append_node', node, this, root);
+			node.emit('append_node:node', node, this, root);
+			
+			this.emit('append_node', node, this, root);
+			this.emit('append_node:this', node, this, root);
+			
+			root.emit('append_node', node, this, root);
+			root.emit('append_node:root', node, this, root);
+			
+			return node;
+		}
+		
+		removeChild(node) {
+			let root = this.getRootNode();
+			
+			let l = this._children.indexOf(node);
+			if(!~l) return Error('This node is not child of current node');
+			this._children.splice(l, 1)[0]._parent = null;
+			
+			node.emit('remove_node', node, this, root);
+			node.emit('remove_node:node', node, this, root);
+			
+			this.emit('remove_node', node, this, root);
+			this.emit('remove_node:this', node, this, root);
+			
+			root.emit('remove_node', node, this, root);
+			root.emit('remove_node:root', node, this, root);
+			
+			return node;
+		}
+		
+		static MAX_CHILDREN = 100;
 	};
 	setToStringTeg(Child, 'Child');
 	
@@ -254,8 +297,8 @@
 		get w()  { return this[3]; }
 		set w(v) { this[3] = v; }
 		
-		plus(...vecs) { return VectorN.operation.call(this, (n, i) => this[i] += n||0, vecs); }
-		minus(...vecs) { return VectorN.operation.call(this, (n, i) => this[i] -= n||0, vecs); }
+		add(...vecs) { return VectorN.operation.call(this, (n, i) => this[i] += n||0, vecs); }
+		sub(...vecs) { return VectorN.operation.call(this, (n, i) => this[i] -= n||0, vecs); }
 		inc(...vecs) { return VectorN.operation.call(this, (n, i) => this[i] *= n||1, vecs); }
 		div(...vecs) { return VectorN.operation.call(this, (n, i) => this[i] /= n||1, vecs); }
 		mod(...vecs) { return VectorN.operation.call(this, (n, i) => this[i] %= n, vecs); }
@@ -313,8 +356,8 @@
 	setToStringTeg(VectorN, 'VectorN');
 	
 	let vecN = (...args) => new VectorN(...args);
-	VectorN.prototype.add = VectorN.prototype.plus;
-	VectorN.prototype.sub = VectorN.prototype.minus;
+	setHiddenProperty(VectorN.prototype, 'plus', VectorN.prototype.add);
+	setHiddenProperty(VectorN.prototype, 'minus', VectorN.prototype.sub);
 	
 	
 	class Vector2 {
@@ -322,12 +365,12 @@
 			this.x = +x||0;
 			this.y = +y||(u(y) ? +y : +x||0);
 		}
-		plus(x, y) {
+		add(x, y) {
 			if(u(x.x) && u(x.y)) { this.x += x.x; this.y += x.y; }
 			else { this.x += x||0; this.y += u(y) ? y : x||0; };
 			return this;
 		}
-		minus(x, y) {
+		sub(x, y) {
 			if(u(x.x) && u(x.y)) { this.x -= x.x; this.y -= x.y; }
 			else { this.x -= x||0; this.y -= u(y) ? y : x||0; };
 			return this;
@@ -372,7 +415,7 @@
 			else { this.x = x||0; this.y = u(y) ? y : x||0; };
 			return this;
 		}
-		buf(x = 0, y = 0) { return new Vector2(this.x, this.y); }
+		buf(x, y) { return new Vector2(u(x)||this.x, u(y)||this.y); }
 		getDistance(v) { return Math.sqrt((v.x-this.x) ** 2 + (v.y-this.y) ** 2); }
 		
 		moveAngle(mv = 0, a = 0) {
@@ -418,6 +461,11 @@
 		
 		dot(v) { return this.x*v.x + this.y*v.y; }
 		cross(v) { return this.x*v.y - this.y*v.x; }
+		projectOnto(v) {
+			let c = (this.x*v.x + this.y*v.y) / (v.x*v.x + v.y*v.y);
+			this.x = v.x*c; this.y = v.y*c;
+			return this;
+		}
 		normalize(a = 1) {
 			let l = this.module/a;
 			this.x /= l; this.y /= l;
@@ -431,8 +479,8 @@
 	setConstantProperty(Vector2, 'ZERO', Object.freeze(new Vector2()));
 	
 	let vec2 = (x, y) => new Vector2(x, y);
-	Vector2.prototype.add = Vector2.prototype.plus;
-	Vector2.prototype.sub = Vector2.prototype.minus;
+	setHiddenProperty(Vector2.prototype, 'plus', Vector2.prototype.add);
+	setHiddenProperty(Vector2.prototype, 'minus', Vector2.prototype.sub);
 	//======================================================================//
 	
 	class CameraImitationCanvas {
@@ -486,31 +534,31 @@
 		scale(x, y) { return this.ctx.scale(x, y); }
 		rotate(a) { return this.ctx.rotate(a); }
 		translate(x, y) { return this.ctx.translate(x-this.camera.x, y-this.camera.y); }
-		translateInv(x, y) { return this.ctx.translate(-x-this.camera.x, -y-this.camera.y); }
-		rotateOffset(a, x = 0, y = 0) {
-			this.ctx.translate(x-this.camera.x, x-this.camera.y);
-			this.ctx.rotate(a);
-			this.ctx.translate(-x-this.camera.x, -x-this.camera.y);
+		translateInv(x, y) { return this.ctx.translate(-(x-this.camera.x), -(y-this.camera.y)); }
+		rotateOffset(a, v = Vector2.ZERO) {
+			this.translate(v.x, v.y);
+			this.rotate(a);
+			this.translateInv(v.x, v.y);
 		}
-		transform(a, b, c, d, e, f) { return this.ctx.transform(a, b, c, d, e, f); }
-		setTransform(v) { return this.ctx.setTransform(v); }
+		transform(...args) { return this.ctx.transform(...args); }
+		setTransform(...args) { return this.ctx.setTransform(...args); }
 		getTransform() { return this.ctx.getTransform(); }
 		resetTransform() { return this.ctx.resetTransform(); }
 		createLinearGradient(x0, y0, x1, y1) { return this.ctx.createLinearGradient(x0-this.camera.x, y0-this.camera.y, x1-this.camera.x, y1-this.camera.y); }
 		createRadialGradient(x0, y0, r0, x1, y1, r1) { return this.ctx.createRadialGradient(x0-this.camera.x, y0-this.camera.y, r0, x1-this.camera.x, y1-this.camera.y, r1); }
-		createPattern(img, repeat) { return this.ctx.createPattern(img, repeat); }
+		createPattern(...args) { return this.ctx.createPattern(...args); }
 		clearRect(x, y, w, h) { return this.ctx.clearRect(x-this.camera.x, y-this.camera.y, w, h); }
 		fillRect(x, y, w, h) { return this.ctx.fillRect(x-this.camera.x, y-this.camera.y, w, h); }
 		strokeRect(x, y, w, h) { return this.ctx.strokeRect(x-this.camera.x, y-this.camera.y, w, h); }
 		beginPath() { return this.ctx.beginPath(); }
-		fill(path) { return this.ctx.fill(path); }
-		stroke(path) { return this.ctx.stroke(path); }
-		drawFocusIfNeeded(path, el) { return this.ctx.drawFocusIfNeeded(path, el); }
-		clip(path) { return this.ctx.clip(path); }
-		isPointInPath(path, x, y, rule) { return this.ctx.isPointInPath(path, x, y, rule); }
-		isPointInStroke(path, x, y) { return this.ctx.isPointInStroke(path, x, y); }
-		fillText(text, x, y, w) { return this.ctx.fillText(text, x-this.camera.x, y-this.camera.y, w); }
-		strokeText(text, x, y, w) { return this.ctx.strokeText(text, x-this.camera.x, y-this.camera.y, w); }
+		fill(...args) { return this.ctx.fill(...args); }
+		stroke(...args) { return this.ctx.stroke(...args); }
+		clip(...args) { return this.ctx.clip(...args); }
+		drawFocusIfNeeded(...args) { return this.ctx.drawFocusIfNeeded(...args); }
+		isPointInPath(...args) { return this.ctx.isPointInPath(...args); }
+		isPointInStroke(...args) { return this.ctx.isPointInStroke(...args); }
+		fillText(text, x, y, w) { return this.ctx.fillText(text, x-this.camera.x, y-this.camera.y, w); } ////
+		strokeText(text, x, y, w) { return this.ctx.strokeText(text, x-this.camera.x, y-this.camera.y, w); } ////
 		measureText(v) { return this.ctx.measureText(v); }
 		drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh) {
 			if (dx !== undefined) return this.ctx.drawImage(img, sx, sy, sw, sh, dx-this.camera.x, dy-this.camera.y, dw, dh);
@@ -518,7 +566,7 @@
 		}
 		getImageData(x, y, w, h) { return this.ctx.getImageData(x-this.camera.x, y-this.camera.y, w, h); }
 		putImageData(img, x, y) { return this.ctx.putImageData(img, x-this.camera.x, y-this.camera.y); }
-		createImageData(img, w, h) { return this.ctx.createImageData(img, w, h); }
+		createImageData(...args) { return this.ctx.createImageData(...args); }
 		getContextAttributes() { return this.ctx.getContextAttributes(); }
 		setLineDash(v) { return this.ctx.setLineDash(v); }
 		getLineDash() { return this.ctx.getLineDash(); }
@@ -528,8 +576,8 @@
 		quadraticCurveTo(x1, y1, x, y) { return this.ctx.quadraticCurveTo(x1-this.camera.x, y1-this.camera.y, x-this.camera.x, y-this.camera.y); }
 		bezierCurveTo(x1, y1, x2, y2, x, y) { return this.ctx.bezierCurveTo(x1-this.camera.x, y1-this.camera.y, x2-this.camera.x, y2-this.camera.y, x-this.camera.x, y-this.camera.y); }
 		arcTo(x1, y1, x2, y2, r) { return this.ctx.arcTo(x1-this.camera.x, y1-this.camera.y, x2-this.camera.x, y2-this.camera.y, r); }
-		rect(x, y, w, h) { return this.ctx.rect(x-this.camera.x, y-this.camera.y); }
-		arc(x, y, r, n, m, t) { return this.ctx.arc(x-this.camera.x, y-this.camera, r, n, m, t); }
+		rect(x, y, w, h) { return this.ctx.rect(x-this.camera.x, y-this.camera.y, w, h); }
+		arc(x, y, r, n, m, t) { return this.ctx.arc(x-this.camera.x, y-this.camera.y, r, n, m, t); }
 		ellipse(x, y, w, h, n, m, t) { return this.ctx.ellipse(x-this.camera.x, y - this.camera.y, w, h, n, m, t); }
 	};
 	setToStringTeg(CameraImitationCanvas, 'CameraImitationCanvas');
@@ -574,16 +622,16 @@
 			
 			this.slotElement = root.querySelector('.slot');
 			
-			this._sizeUpdata();
+			this._sizeUpdate();
 			window.addEventListener('resize', e => {
-				this._sizeUpdata();
+				this._sizeUpdate();
 				this.emit('resize', e);
 			});
 		}
 		
 		set pixelScale(v) {
 			this._pixelScale = v;
-			this._updata();
+			this._update();
 		}
 		get pixelScale() { return this._pixelScale; }
 		
@@ -607,7 +655,7 @@
 		get vmin() { return Math.min(this._width, this._height) / 100; }
 		get size() { return new Vector2(this._width, this._height); }
 		
-		_sizeUpdata() {
+		_sizeUpdate() {
 			let b = this.getBoundingClientRect();
 			this._width = b.width*this._pixelScale;
 			this._height = b.height*this._pixelScale;
@@ -627,7 +675,7 @@
 	
 	
 	ver = {
-		version: '1.1.0',
+		version: '1.1.1',
 		
 		codeShell, random, JSONcopy, loader, loadImage, loadScript, generateImage,
 		EventEmitter, Scene, Child,

@@ -1,17 +1,8 @@
-(function() {
-	let ver = {};
-	
-	function codeShell(code = '', useAPI = {}, file = 'code') {
-		let proxyUseAPI = new Proxy(useAPI, {
-			has: t => true,
-			get: (target, key) => key === Symbol.unscopables ? undefined : target[key]
-		});
-		
-		if(typeof code !== 'string') code = code.toString().replace(/^function.+?\{(.*)\}$/s, '$1');
-		return function() { eval(`with(proxyUseAPI) {${code}}; //# sourceURL=${file}`); };
-	};
-	
+globalThis.Ver = globalThis.ver = {};
+
+(function(ver) {
 	'use strict';
+	
 	// helpers
 	let u = a => a !== undefined;
 	let setConstantProperty = (o, p, v) => Object.defineProperty(o, p, { value: v, enumerable: true });
@@ -25,6 +16,25 @@
 	
 	let random = (a, b) =>  Math.floor(Math.random()*(1+b-a)+a);
 	let JSONcopy = data => JSON.parse(JSON.stringify(data));
+	
+	
+	let createPrivileges = (privileges = {}) => {
+		let register = {
+			present: {},
+			default: privileges
+		};
+		
+		for(let i in register.default) register.present[i] = register.default[i];
+		
+		register.addPrivilege = (cb, privileges = {}) => function() {
+			for(let i in privileges) i in register.present && (register.present[i] = privileges[i]);
+			cb.apply(this, arguments);
+			for(let i in privileges) i in register.present && (register.present[i] = register.default[i]);
+		};
+		
+		return register;
+	};
+	
 	
 	let generateImage = (w, h, cb) => new Promise((res, rej) => {
 		let cvs = generateImage.canvas || (generateImage.canvas = document.createElement('canvas'));
@@ -674,14 +684,31 @@
 	//======================================================================//
 	
 	
-	ver = {
-		version: '1.1.1',
+	Object.assign(ver, {
+		version: '1.2.0',
 		
-		codeShell, random, JSONcopy, loader, loadImage, loadScript, generateImage,
+		createPrivileges, random, JSONcopy,
+		loader, loadImage, loadScript, generateImage,
 		EventEmitter, Scene, Child,
 		Vector2, vec2, VectorN, vecN,
 		CameraImitationCanvas, CanvasLayer
+	});
+})(globalThis.ver);
+
+
+(function(ver) {
+	function codeShell(code = '', useAPI = {}, p = {}) {
+		let API = useAPI;
+		if(p.insulatedShell ?? true) {
+			API = new Proxy(useAPI, {
+				has: () => true,
+				get: (target, key) => key === Symbol.unscopables ? undefined : target[key]
+			});
+		};
+		
+		if(typeof code !== 'string') code = code.toString().replace(/^function.+?\{(.*)\}$/s, '$1');
+		return function() { eval(`with(API) {${code}}; //# sourceURL=${p.file || 'code'}`); };
 	};
 	
-	globalThis.Ver = globalThis.ver = ver;
-})();
+	ver.codeShell = codeShell;
+})(globalThis.ver);

@@ -1,1 +1,1 @@
-# "Ver" lib v1.1.1
+# "Ver" lib v1.2.0

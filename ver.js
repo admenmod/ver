@@ -371,37 +371,43 @@ globalThis.Ver = globalThis.ver = {};
 	
 	
 	class Vector2 {
-		constructor(x, y) {
-			this.x = +x||0;
-			this.y = +y||(u(y) ? +y : +x||0);
+		constructor(x = 0, y = 0) {
+			this.x = this.y = 0;
+			this.set(x, y);
 		}
 		add(x, y) {
 			if(u(x.x) && u(x.y)) { this.x += x.x; this.y += x.y; }
+			else if(u(x[0]) && u(x[1])) { this.x += x[0]; this.y += x[1]; }
 			else { this.x += x||0; this.y += u(y) ? y : x||0; };
 			return this;
 		}
 		sub(x, y) {
 			if(u(x.x) && u(x.y)) { this.x -= x.x; this.y -= x.y; }
+			else if(u(x[0]) && u(x[1])) { this.x -= x[0]; this.y -= x[1]; }
 			else { this.x -= x||0; this.y -= u(y) ? y : x||0; };
 			return this;
 		}
 		inc(x, y) {
 			if(u(x.x) && u(x.y)) { this.x *= x.x; this.y *= x.y; }
+			else if(u(x[0]) && u(x[1])) { this.x *= x[0]; this.y *= x[1]; }
 			else { this.x *= x||0; this.y *= u(y) ? y : x||0; };
 			return this;
 		}
 		div(x, y) {
 			if(u(x.x) && u(x.y)) { this.x /= x.x; this.y /= x.y; }
+			else if(u(x[0]) && u(x[1])) { this.x /= x[0]; this.y /= x[1]; }
 			else { this.x /= x||0; this.y /= u(y) ? y : x||0; };
 			return this;
 		}
 		pow(x, y) {
 			if(u(x.x) && u(x.y)) { this.x **= x.x; this.y **= x.y; }
+			else if(u(x[0]) && u(x[1])) { this.x **= x[0]; this.y **= x[1]; }
 			else { this.x **= x||0; this.y **= u(y) ? y : x||0; };
 			return this;
 		}
 		mod(x, y) {
 			if(u(x.x) && u(x.y)) { this.x %= x.x; this.y %= x.y; }
+			else if(u(x[0]) && u(x[1])) { this.x %= x[0]; this.y %= x[1]; }
 			else { this.x %= x||0; this.y %= u(y) ? y : x||0; };
 			return this;
 		}
@@ -422,10 +428,11 @@ globalThis.Ver = globalThis.ver = {};
 		}
 		set(x, y) {
 			if(u(x.x) && u(x.y)) { this.x = x.x; this.y = x.y; }
+			else if(u(x[0]) && u(x[1])) { this.x = x[0]; this.y = x[1]; }
 			else { this.x = x||0; this.y = u(y) ? y : x||0; };
 			return this;
 		}
-		buf(x, y) { return new Vector2(u(x)||this.x, u(y)||this.y); }
+		buf(x, y) { return new Vector2(u(x) || this.x, u(y) || this.y); }
 		getDistance(v) { return Math.sqrt((v.x-this.x) ** 2 + (v.y-this.y) ** 2); }
 		
 		moveAngle(mv = 0, a = 0) {
@@ -685,7 +692,7 @@ globalThis.Ver = globalThis.ver = {};
 	
 	
 	Object.assign(ver, {
-		version: '1.2.0',
+		version: '1.2.1',
 		
 		createPrivileges, random, JSONcopy,
 		loader, loadImage, loadScript, generateImage,

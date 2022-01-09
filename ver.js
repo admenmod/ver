@@ -692,7 +692,7 @@ globalThis.Ver = globalThis.ver = {};
 	
 	
 	Object.assign(ver, {
-		version: '1.2.1',
+		version: '1.2.2',
 		
 		createPrivileges, random, JSONcopy,
 		loader, loadImage, loadScript, generateImage,
@@ -709,12 +709,12 @@ globalThis.Ver = globalThis.ver = {};
 		if(p.insulatedShell ?? true) {
 			API = new Proxy(useAPI, {
 				has: () => true,
-				get: (target, key) => key === Symbol.unscopables ? undefined : target[key]
+				get: (target, key, receiver) => key === Symbol.unscopables ? undefined : Reflect.get(target, key, receiver)
 			});
 		};
 		
 		if(typeof code !== 'string') code = code.toString().replace(/^function.+?\{(.*)\}$/s, '$1');
-		return function() { eval(`with(API) {${code}}; //# sourceURL=${p.file || 'code'}`); };
+		return function() { eval(`with(API) {${code}}; //# sourceURL=${p.source || 'code'}`); };
 	};
 	
 	ver.codeShell = codeShell;

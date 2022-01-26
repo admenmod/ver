@@ -1,5 +1,24 @@
 globalThis.Ver = globalThis.ver = {};
 
+
+(function(ver) {
+	function codeShell(code = '', useAPI = {}, p = {}) {
+		let API = useAPI;
+		if(p.insulatedShell ?? true) {
+			API = new Proxy(useAPI, {
+				has: () => true,
+				get: (target, key, receiver) => key === Symbol.unscopables ? undefined : Reflect.get(target, key, receiver)
+			});
+		};
+		
+		if(typeof code !== 'string') code = code.toString().replace(/^function.+?\{(.*)\}$/s, '$1');
+		return function() { eval(`with(API) {${code}}; //# sourceURL=${p.source || 'code'}`); };
+	};
+	
+	ver.codeShell = codeShell;
+})(globalThis.ver);
+
+
 (function(ver) {
 	'use strict';
 	
@@ -18,9 +37,19 @@ globalThis.Ver = globalThis.ver = {};
 	let JSONcopy = data => JSON.parse(JSON.stringify(data));
 	
 	
+	let NameSpace = function(namespace = null) {
+		return Object.create(namespace);
+	};
+	
+	let SymbolSpace = function(symbolspace = null) {
+		let space = Object.create(symbolspace);
+		return id => space[id] || (space[id] = Symbol(id));
+	};
+	
+	
 	let createPrivileges = (privileges = {}) => {
 		let register = {
-			present: {},
+			present: new NameSpace(),
 			default: privileges
 		};
 		
@@ -692,30 +721,13 @@ globalThis.Ver = globalThis.ver = {};
 	
 	
 	Object.assign(ver, {
-		version: '1.2.2',
+		version: '1.3.0',
 		
+		NameSpace, SymbolSpace,
 		createPrivileges, random, JSONcopy,
 		loader, loadImage, loadScript, generateImage,
 		EventEmitter, Scene, Child,
 		Vector2, vec2, VectorN, vecN,
 		CameraImitationCanvas, CanvasLayer
 	});
-})(globalThis.ver);
-
-
-(function(ver) {
-	function codeShell(code = '', useAPI = {}, p = {}) {
-		let API = useAPI;
-		if(p.insulatedShell ?? true) {
-			API = new Proxy(useAPI, {
-				has: () => true,
-				get: (target, key, receiver) => key === Symbol.unscopables ? undefined : Reflect.get(target, key, receiver)
-			});
-		};
-		
-		if(typeof code !== 'string') code = code.toString().replace(/^function.+?\{(.*)\}$/s, '$1');
-		return function() { eval(`with(API) {${code}}; //# sourceURL=${p.source || 'code'}`); };
-	};
-	
-	ver.codeShell = codeShell;
 })(globalThis.ver);

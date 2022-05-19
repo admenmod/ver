@@ -576,11 +576,24 @@ globalThis.Ver = globalThis.ver = {};
 		set textBaseline(v) { this.ctx.textBaseline = v; }
 		get direction() { return ctx.direction; }
 		set direction(v) { ctx.direction = v; }
+		get fontKerning() { return ctx.fontKerning; }
+		set fontKerning(v) { ctx.fontKerning = v; }
+		get fontStretch() { return ctx.fontStretch; }
+		set fontStretch(v) { ctx.fontStretch = v; }
+		get fontVariantCaps() { return ctx.fontVariantCaps; }
+		set fontVariantCaps(v) { ctx.fontVariantCaps = v; }
+		get wordSpacing() { return ctx.wordSpacing; }
+		set wordSpacing(v) { ctx.wordSpacing = v; }
+		get letterSpacing() { return ctx.letterSpacing; }
+		set letterSpacing(v) { ctx.letterSpacing = v; }
+		get textRendering() { return ctx.textRendering; }
+		set textRendering(v) { ctx.textRendering = v; }
 
-		save() { return this.ctx.save(); }
-		restore() { return this.ctx.restore(); }
-		scale(x, y) { return this.ctx.scale(x, y); }
-		rotate(a) { return this.ctx.rotate(a); }
+		save(...args) { return this.ctx.save(...args); }
+		restore(...args) { return this.ctx.restore(...args); }
+		scale(...args) { return this.ctx.scale(...args); }
+		reset(...args) { return this.ctx.reset(...args); }
+		rotate(...args) { return this.ctx.rotate(...args); }
 		translate(x, y) { return this.ctx.translate(x-this.camera.x, y-this.camera.y); }
 		translateInv(x, y) { return this.ctx.translate(-(x-this.camera.x), -(y-this.camera.y)); }
 		rotateOffset(a, v = Vector2.ZERO) {
@@ -594,8 +607,10 @@ globalThis.Ver = globalThis.ver = {};
 		resetTransform() { return this.ctx.resetTransform(); }
 		createLinearGradient(x0, y0, x1, y1) { return this.ctx.createLinearGradient(x0-this.camera.x, y0-this.camera.y, x1-this.camera.x, y1-this.camera.y); }
 		createRadialGradient(x0, y0, r0, x1, y1, r1) { return this.ctx.createRadialGradient(x0-this.camera.x, y0-this.camera.y, r0, x1-this.camera.x, y1-this.camera.y, r1); }
+		createConicGradient(s, x, y) { return this.ctx.createConicGradient(s, x-this.camera.x, y-this.camera.y); }
 		createPattern(...args) { return this.ctx.createPattern(...args); }
 		clearRect(x, y, w, h) { return this.ctx.clearRect(x-this.camera.x, y-this.camera.y, w, h); }
+		roundRect(x, y, w, h, ...args) { return this.ctx.roundRect(x-this.camera.x, y-this.camera.y, w, h, ...args); }
 		fillRect(x, y, w, h) { return this.ctx.fillRect(x-this.camera.x, y-this.camera.y, w, h); }
 		strokeRect(x, y, w, h) { return this.ctx.strokeRect(x-this.camera.x, y-this.camera.y, w, h); }
 		beginPath() { return this.ctx.beginPath(); }
@@ -605,6 +620,7 @@ globalThis.Ver = globalThis.ver = {};
 		drawFocusIfNeeded(...args) { return this.ctx.drawFocusIfNeeded(...args); }
 		isPointInPath(...args) { return this.ctx.isPointInPath(...args); }
 		isPointInStroke(...args) { return this.ctx.isPointInStroke(...args); }
+		isContextLost() { return this.ctx.isContextLost(); }
 		fillText(text, x, y, w) { return this.ctx.fillText(text, x-this.camera.x, y-this.camera.y, w); } ////
 		strokeText(text, x, y, w) { return this.ctx.strokeText(text, x-this.camera.x, y-this.camera.y, w); } ////
 		measureText(v) { return this.ctx.measureText(v); }
@@ -632,43 +648,42 @@ globalThis.Ver = globalThis.ver = {};
 
 
 	class CanvasLayer extends HTMLElement {
-		constructor() {
+		constructor(p = {}) {
 			super();
 			Object.defineProperty(this, '_events', { value: {} });
 
-			let root = this.attachShadow({ mode: 'open' });
-			let layers = this.getAttribute('layers')?.split(/\s+/).reverse() || ['back', 'main'];
+			const root = this.attachShadow({ mode: 'open' });
+			const paramlayers = p.layers || this.getAttribute('layers')?.split(/\s+/) || ['back', 'main'];
 
-			this._pixelScale = +this.getAttribute('pixel-scale') || 1;
+			this._pixelScale = p.pixelScale || +this.getAttribute('pixel-scale') || 1;
 
-			let box = this.getBoundingClientRect();
-			this._width = box.width;
-			this._height = box.height;
+			this.layers = {};
 
-			this.canvas = {};
-			this.context = {};
-			this.cameraImitationCanvas = {};
+			this.style.cssText = `display: grid; align-items: center; justify-items: center;`;
 
-			this.style.display = 'grid';
-			this.style.alignItems = 'center';
-			this.style.justifyItems = 'center';
+			root.innerHTML += 
+`<div class="layers" style="
+	display: grid;
+	width: 100%; height: 100%;
+	overflow: auto;
+	grid-area: 1/1/1/1;
+	align-self: center;
+	justify-self: center;
+"></div>
+<div class="slot" style="
+	display: grid;
+	width: 100%; height: 100%;
+	overflow: auto;
+	grid-area: 1/1/1/1;
+	align-self: ${this.getAttribute('align-slot')||'center'};
+	justify-self :${this.getAttribute('justify-slot')||'center'};
+"><slot></slot></div>`;
 
-			let tmp = document.createElement('template');
-			let el = '';
+			this.slotWrapper = root.querySelector('.slot');
+			this.layersWrapper = root.querySelector('.layers');
 
-			for(let id of layers) el += `<canvas style="width:100%; height:100%; grid-area:1/1/1/1;" id="${id}"></canvas>`;
-			el += `<div class="slot" style="z-index: 10; width:100%; height:100%; overflow: auto; grid-area:1/1/1/1; align-self:${this.getAttribute('align-slot')||'center'}; justify-self:${this.getAttribute('justify-slot')||'center'};"><slot></slot></div>`;
+			for(let id of paramlayers) { this.createLayer(id); };
 
-			tmp.innerHTML += el;
-			root.append(tmp.content.cloneNode(true));
-
-			for(let id of layers) {
-				this.canvas[id] = root.getElementById(id);
-				this.context[id] = this.canvas[id].getContext('2d');
-				this.cameraImitationCanvas[id] = new CameraImitationCanvas(this.context[id]);
-			};
-
-			this.slotElement = root.querySelector('.slot');
 
 			this._sizeUpdate();
 			window.addEventListener('resize', e => {
@@ -685,13 +700,13 @@ globalThis.Ver = globalThis.ver = {};
 
 		set width(v) {
 			this._width = v*this._pixelScale;
-			for(let id in this.canvas) this.canvas[id].width = this._width;
+			for(let id in this.layers) this.layers[id].width = this._width;
 		}
 		get width() { return this._width; }
 
 		set height(v) {
 			this._height = v*this._pixelScale;
-			for(let id in this.canvas) this.canvas[id].height = this._height;
+			for(let id in this.layers) this.layers[id].height = this._height;
 		}
 		get height() { return this._height; }
 
@@ -708,10 +723,61 @@ globalThis.Ver = globalThis.ver = {};
 			this._width = b.width*this._pixelScale;
 			this._height = b.height*this._pixelScale;
 
-			for(let id in this.canvas) {
-				this.canvas[id].width = this._width;
-				this.canvas[id].height = this._height;
+			for(let id in this.layers) {
+				this.layers[id].width = this._width;
+				this.layers[id].height = this._height;
 			};
+		}
+
+		getLayer(id) { return this.layers[id]; }
+		getLayers() { return this.layers; }
+
+		createLayer(id, pos = 'beforeEnd') {
+			let layer = document.createElement('canvas');
+			layer.id = id;
+			layer.style.cssText += `width:100%; height:100%; grid-area:1/1/1/1;`;
+
+			let idLayers = [...this.layersWrapper.querySelectorAll('canvas')].map(i => i.id);
+
+			if(pos === 'start' || pos === 'afterBegin') {
+				this.layersWrapper.insertBefore(layer, this.layers[idLayers[pos]]);
+			} else if(typeof pos === 'number' && !isNaN(pos)) {
+				this.layersWrapper.insertBefore(layer, this.layers[idLayers[0]]);
+			} else if(pos === 'end' || pos === 'beforeEnd' || true) this.layersWrapper.append(layer);
+
+			this.layers[id] = this.layersWrapper.querySelector(`#${id}`);
+
+			this.emit('createLayer', id, this.layers[id], pos);
+			return this.layers[id];
+		}
+
+		removeLayer(id) {
+			this.layers[id].remove();
+			delete this.layers[id];
+
+			this.emit('removeLayer', id);
+			return id;
+		}
+
+		moveLayer(layerId, targetId = null) {
+			if(layerId === targetId) return;
+
+			let { [layerId]: layer, [targetId]: target = null } = this.layers;
+
+			this.layersWrapper.insertBefore(layer, target);
+			this.emit('moveLayer', layer, target);
+			return layer;
+		}
+
+		static get observedAttributes() {
+			return ['width', 'height', 'pixelScale', 'justifyItems', 'alignItems'];
+		}
+
+		attributeChangedCallback(name, oldValue, newValue) {
+			if(oldValue === newValue) return;
+
+			if(['width', 'height', 'pixelScale'].includes(name)) this[name] = newValue;
+			else if(['justifyItems', 'alignItems'].includes(name)) this.slotWrapper.style[name] = newValue;
 		}
 	};
 	setToStringTeg(CanvasLayer, 'CanvasLayer');
@@ -723,7 +789,7 @@ globalThis.Ver = globalThis.ver = {};
 
 
 	Object.assign(ver, {
-		version: '1.3.1',
+		version: '1.3.2',
 
 		NameSpace, SymbolSpace,
 		createPrivileges, random, JSONcopy,

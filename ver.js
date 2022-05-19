@@ -10,123 +10,123 @@ globalThis.Ver = globalThis.ver = {};
 				get: (target, key, receiver) => key === Symbol.unscopables ? undefined : Reflect.get(target, key, receiver)
 			});
 		};
-		
+
 		if(typeof code !== 'string') code = code.toString().replace(/^function.+?\{(.*)\}$/s, '$1');
 		return function() { eval(`with(API) {${code}}; //# sourceURL=${p.source || 'code'}`); };
 	};
-	
+
 	ver.codeShell = codeShell;
 })(globalThis.ver);
 
 
 (function(ver) {
 	'use strict';
-	
+
 	// helpers
-	let u = a => a !== undefined;
-	let setConstantProperty = (o, p, v) => Object.defineProperty(o, p, { value: v, enumerable: true });
-	let setHiddenProperty = (o, p, v) => Object.defineProperty(o, p, { value: v, writable: true, configurable: true });
-	let setToStringTeg = (o, v) => Object.defineProperty(o, Symbol.toStringTag, { value: v, configurable: true });
-	let setGetter = (o, p, getter) => Object.defineProperty(o, p, { get: getter, enumerable: true, configurable: true });
-	let injectingEventEmitterMethods = o => {
+	const u = a => a !== undefined;
+	const setConstantProperty = (o, p, v) => Object.defineProperty(o, p, { value: v, enumerable: true });
+	const setHiddenProperty = (o, p, v) => Object.defineProperty(o, p, { value: v, writable: true, configurable: true });
+	const setToStringTeg = (o, v) => Object.defineProperty(o, Symbol.toStringTag, { value: v, configurable: true });
+	const setGetter = (o, p, getter) => Object.defineProperty(o, p, { get: getter, enumerable: true, configurable: true });
+	const injectingEventEmitterMethods = o => {
 		for(let i of ['on', 'once', 'off', 'emit']) o[i] = EventEmitter.prototype[i];
 	};
-	
-	
-	let random = (a, b) =>  Math.floor(Math.random()*(1+b-a)+a);
-	let JSONcopy = data => JSON.parse(JSON.stringify(data));
-	
-	
-	let NameSpace = function(namespace = null) {
+
+
+	const random = (a, b) =>  Math.floor(Math.random()*(1+b-a)+a);
+	const JSONcopy = data => JSON.parse(JSON.stringify(data));
+
+
+	const NameSpace = function(namespace = null) {
 		return Object.create(namespace);
 	};
-	
-	let SymbolSpace = function(symbolspace = null) {
+
+	const SymbolSpace = function(symbolspace = null) {
 		let space = Object.create(symbolspace);
 		return id => space[id] || (space[id] = Symbol(id));
 	};
-	
-	
-	let createPrivileges = (privileges = {}) => {
+
+
+	const createPrivileges = (privileges = {}) => {
 		let register = {
 			present: new NameSpace(),
 			default: privileges
 		};
-		
+
 		for(let i in register.default) register.present[i] = register.default[i];
-		
+
 		register.addPrivilege = (cb, privileges = {}) => function() {
 			for(let i in privileges) i in register.present && (register.present[i] = privileges[i]);
 			cb.apply(this, arguments);
 			for(let i in privileges) i in register.present && (register.present[i] = register.default[i]);
 		};
-		
+
 		return register;
 	};
-	
-	
-	let generateImage = (w, h, cb) => new Promise((res, rej) => {
+
+
+	const generateImage = (w, h, cb) => new Promise((res, rej) => {
 		let cvs = generateImage.canvas || (generateImage.canvas = document.createElement('canvas'));
 		let ctx = cvs.getContext('2d');
 		cvs.width = w; cvs.height = h;
-		
+
 		cb(ctx, vec2(w, h));
-		
+
 		let img = new Image(w, h);
 		img.src = cvs.toDataURL();
 		img.onload = e => res(img);
 		img.onerror = e => rej(e);
 	});
-	
-	let loadImage = (src, w, h) => new Promise((res, rej) => {
+
+	const loadImage = (src, w, h) => new Promise((res, rej) => {
 		let el = new Image(w, h);
 		el.src = src;
 		el.onload = e => res(el);
 		el.onerror = e => rej(e);
 	});
-	
-	let loadScript = (src, p = {}) => new Promise((res, rej) => {
+
+	const loadScript = (src, p = {}) => new Promise((res, rej) => {
 		let parent = p.parent || document.querySelector('head');
-		
+
 		let script = document.createElement('script');
 		script.type = 'text/javascript';
-		script.async = p.async||false;
+		script.async = p.async || true;
 		script.src = src
-		
+
 		parent.append(script);
-		
+
 		script.onload = e => res(e);
 		script.onerror = e => rej(e);
 	});
-	
-	let loader = { loadImage, loadScript, cache: new WeakMap() };
-	
-	
+
+	const loader = { loadImage, loadScript, cache: new WeakMap() };
+
+
 	class EventEmitter {
 		constructor() {
 			Object.defineProperty(this, '_events', { value: {} });
 		}
-		
+
 		once(type, handler) { return this.on(type, handler, 1); }
 		on(type, handler, once = 0) {
 			if(typeof handler !== 'function') return Error('Invalid argument "handler"');
-			
+
 			if(!this._events[type]) {
 				this._events[type] = [];
 				Object.defineProperty(this._events[type], 'store', { value: {} });
 				Object.defineProperty(this._events[type], 'once', { value: [] });
-				
+
 				let store = this._events[type].store;
 				store.type = type;
 				store.self = store.emitter = this;
 			};
-			
+
 			this._events[type].push(handler);
 			this._events[type].once.push(once);
-			
+
 			return this;
 		}
-		
+
 		off(type, handler) {
 			if(!type) for(let i in this._events) delete this._events[i];
 			if(!this._events[type]) return this;
@@ -140,13 +140,13 @@ globalThis.Ver = globalThis.ver = {};
 			};
 			return this;
 		}
-		
+
 		emit(type, ...args) {
 			if(!this._events[type]) return false;
-			
+
 			for(let i = 0; i < this._events[type].length; i++) {
 				this._events[type][i].apply(this._events[type].store, args);
-				
+
 				if(this._events[type].once[i]) {
 					this._events[type].splice(i, 1);
 					this._events[type].once.splice(i, 1);
@@ -157,48 +157,48 @@ globalThis.Ver = globalThis.ver = {};
 	};
 	setToStringTeg(EventEmitter, 'EventEmitter');
 	EventEmitter.prototype.remove = EventEmitter.prototype.off;
-	
-	
+
+
 	class Scene {
 		constructor(scene, name) {
 			this.name = name;
 			this._scene = scene;
 			this.proms = [];
-			
+
 			this.isInitialized = this.isLoaded = this.isActived = false;
-			
+
 			this._api = new EventEmitter();
 			this._api.preload = (...proms) => this.proms = this.proms.concat(proms);
-			
+
 			this._api.init = this._api.load = this._api.exit = this._api.update = null;
-			
+
 			setGetter(this._api, 'name', () => this.name);
 			setGetter(this._api, 'isLoaded', () => this.isLoaded);
 			setGetter(this._api, 'isActived', () => this.isActived);
 		}
-		
+
 		run() {
 			if(!this.isInitialized) {
 				this.isInitialized = true;
 				this._scene.call(this._api, this._api);
 			};
-			
+
 			this.init();
 		}
-		
+
 		load() {
 			return Promise.all(this.proms).then(() => {
 				if(this.isLoaded) return;
-				
+
 				this._api.load?.();
 				this._api.emit('load');
 				this.isLoaded = true;
 			});
 		}
-		
+
 		init() {
 			if(this.isActived) return;
-			
+
 			this.load().then(() => {
 				this._activateScene();
 				this.isActived = true;
@@ -209,62 +209,62 @@ globalThis.Ver = globalThis.ver = {};
 		exit() {
 			if(!this.isActived) return;
 			this.isActived = false;
-			
+
 			this._deactivateScene();
 			this._api.exit?.();
 			this._api.emit('exit');
 		}
-		
+
 		update(dt) {
 			this._api.update?.(dt);
 			this._api.emit('update', dt);
 		}
-		
+
 		remove() {
 			this.exit();
 			this._api.off();
 			delete Scene.scenes[this.name];
 		}
-		
+
 		_activateScene() { Scene.active_scenes.push(this); }
 		_deactivateScene() {
 			let l = Scene.active_scenes.indexOf(this);
 			if(~l) Scene.active_scenes.splice(l, 1);
 		}
-		
+
 		static scenes = {};
 		static active_scenes = [];
-		
+
 		static update(dt) {
 			for(let i = 0; i < this.active_scenes.length; i++) {
 				this.active_scenes[i].update(dt);
 			};
 		}
-		
+
 		static create(name, constructor) { return this.scenes[name] = new Scene(constructor, name); }
 		static remove(name) { return this.scenes[name].remove(); }
-		
+
 		static get(name) { return this.scenes[name]; }
 		static run(name) { return this.scenes[name].run(); }
 		static exit(name) { return this.scenes[name].exit(); }
 	};
 	setToStringTeg(Scene, 'Scene');
-	
-	
+
+
 	class Child extends EventEmitter {
 		constructor() {
 			super();
 			this._parent = null;
 			this._children = [];
 		}
-		
+
 		getParent() { return this._parent; }
 		getChildren() { return [...this._children]; };
 		getRootNode() {
 			let arr = this.getChainParent();
 			return arr[arr.length-1] || this;
 		}
-		
+
 		getChainParent() {
 			let arr = [];
 			let pr = this._parent;
@@ -274,53 +274,53 @@ globalThis.Ver = globalThis.ver = {};
 			};
 			return arr;
 		}
-		
+
 		appendChild(node) {
 			if(node._parent !== null) return Error('This node already has a parent');
 			if(this._children.includes(node)) console.warn('This node already is child');
-			
+
 			let root = this.getRootNode();
 			if(root === node) console.warn('This node is root node of current tree');
-			
+
 			node._parent = this;
 			this._children.push(node);
-			
+
 			node.emit('append_node', node, this, root);
 			node.emit('append_node:node', node, this, root);
-			
+
 			this.emit('append_node', node, this, root);
 			this.emit('append_node:this', node, this, root);
-			
+
 			root.emit('append_node', node, this, root);
 			root.emit('append_node:root', node, this, root);
-			
+
 			return node;
 		}
-		
+
 		removeChild(node) {
 			let root = this.getRootNode();
-			
+
 			let l = this._children.indexOf(node);
 			if(!~l) return Error('This node is not child of current node');
 			this._children.splice(l, 1)[0]._parent = null;
-			
+
 			node.emit('remove_node', node, this, root);
 			node.emit('remove_node:node', node, this, root);
-			
+
 			this.emit('remove_node', node, this, root);
 			this.emit('remove_node:this', node, this, root);
-			
+
 			root.emit('remove_node', node, this, root);
 			root.emit('remove_node:root', node, this, root);
-			
+
 			return node;
 		}
-		
+
 		static MAX_CHILDREN = 100;
 	};
 	setToStringTeg(Child, 'Child');
-	
-	
+
+
 	class VectorN extends Array {
 		constructor(...args) {
 			super();
@@ -335,7 +335,7 @@ globalThis.Ver = globalThis.ver = {};
 		set z(v) { this[2] = v; }
 		get w()  { return this[3]; }
 		set w(v) { this[3] = v; }
-		
+
 		add(...vecs) { return VectorN.operation.call(this, (n, i) => this[i] += n||0, vecs); }
 		sub(...vecs) { return VectorN.operation.call(this, (n, i) => this[i] -= n||0, vecs); }
 		inc(...vecs) { return VectorN.operation.call(this, (n, i) => this[i] *= n||1, vecs); }
@@ -354,8 +354,8 @@ globalThis.Ver = globalThis.ver = {};
 			for(let i = 0; i < this.length; i++) this[i] = -this[i];
 			return this;
 		}
-		floor(i = 1) {
-			for(let i = 0; i < this.length; i++) this[i] = Math.floor(this[i]*i)/i;
+		floor(n = 1) {
+			for(let i = 0; i < this.length; i++) this[i] = Math.floor(this[i]*n)/n;
 			return this;
 		}
 		buf() { return new VectorN(this); }
@@ -376,7 +376,7 @@ globalThis.Ver = globalThis.ver = {};
 			for(let i = 0; i < this.length; i++) if(this[i] !== v[i]) return false;
 			return true;
 		}
-		
+
 		static parseArgs(args) {
 			let arr = [];
 			for(let i = 0; i < args.length; i++) {
@@ -393,12 +393,12 @@ globalThis.Ver = globalThis.ver = {};
 		}
 	};
 	setToStringTeg(VectorN, 'VectorN');
-	
-	let vecN = (...args) => new VectorN(...args);
+
+	const vecN = (...args) => new VectorN(...args);
 	setHiddenProperty(VectorN.prototype, 'plus', VectorN.prototype.add);
 	setHiddenProperty(VectorN.prototype, 'minus', VectorN.prototype.sub);
-	
-	
+
+
 	class Vector2 {
 		constructor(x = 0, y = 0) {
 			this.x = this.y = 0;
@@ -463,7 +463,7 @@ globalThis.Ver = globalThis.ver = {};
 		}
 		buf(x, y) { return new Vector2(u(x) || this.x, u(y) || this.y); }
 		getDistance(v) { return Math.sqrt((v.x-this.x) ** 2 + (v.y-this.y) ** 2); }
-		
+
 		moveAngle(mv = 0, a = 0) {
 			this.x += mv*Math.cos(a);
 			this.y += mv*Math.sin(a);
@@ -482,7 +482,7 @@ globalThis.Ver = globalThis.ver = {};
 			return this;
 		}
 		isSame(v) { return this.x === v.x && this.y === v.y; }
-		
+
 		isDynamicRectIntersect(a) {
 			let d = 0;
 			for(let c = a.length-1, n = 0; n < a.length; c = n++) {
@@ -493,7 +493,7 @@ globalThis.Ver = globalThis.ver = {};
 			return d;
 		}
 		isStaticRectIntersect({x, y, w, h}) { return this.x > x && this.x < x+w && this.y > y && this.y < y+h; }
-		
+
 		getAngleRelative(v = Vector2.ZERO) { return Math.atan2(v.y-this.y, v.x-this.x); }
 		set angle(a) {
 			let cos = Math.cos(a), sin = Math.sin(a);
@@ -504,7 +504,7 @@ globalThis.Ver = globalThis.ver = {};
 		get angle() { return Math.atan2(this.y, this.x); }
 		get module() { return Math.sqrt(this.moduleSq); }
 		get moduleSq() { return this.x*this.x + this.y*this.y; }
-		
+
 		dot(v) { return this.x*v.x + this.y*v.y; }
 		cross(v) { return this.x*v.y - this.y*v.x; }
 		projectOnto(v) {
@@ -517,23 +517,24 @@ globalThis.Ver = globalThis.ver = {};
 			this.x /= l; this.y /= l;
 			return this;
 		}
-		
+
 		toString() { return `Vector2(${this.x}, ${this.y})`; }
 		[Symbol.toPrimitive](type) { return type === 'string' ? `Vector2(${this.x}, ${this.y})` : true; }
 	};
 	setToStringTeg(Vector2, 'Vector2');
 	setConstantProperty(Vector2, 'ZERO', Object.freeze(new Vector2()));
-	
-	let vec2 = (x, y) => new Vector2(x, y);
+
+	const vec2 = (x, y) => new Vector2(x, y);
 	setHiddenProperty(Vector2.prototype, 'plus', Vector2.prototype.add);
 	setHiddenProperty(Vector2.prototype, 'minus', Vector2.prototype.sub);
 	//======================================================================//
-	
+
 	class CameraImitationCanvas {
 		constructor(ctx) {
 			this.ctx = ctx;
 			this.camera = new Vector2();
 		}
+
 		get canvas() { return this.ctx.canvas; }
 		get globalAlpha() { return this.ctx.globalAlpha; }
 		set globalAlpha(v) { this.ctx.globalAlpha = v; }
@@ -575,6 +576,7 @@ globalThis.Ver = globalThis.ver = {};
 		set textBaseline(v) { this.ctx.textBaseline = v; }
 		get direction() { return ctx.direction; }
 		set direction(v) { ctx.direction = v; }
+
 		save() { return this.ctx.save(); }
 		restore() { return this.ctx.restore(); }
 		scale(x, y) { return this.ctx.scale(x, y); }
@@ -627,72 +629,72 @@ globalThis.Ver = globalThis.ver = {};
 		ellipse(x, y, w, h, n, m, t) { return this.ctx.ellipse(x-this.camera.x, y - this.camera.y, w, h, n, m, t); }
 	};
 	setToStringTeg(CameraImitationCanvas, 'CameraImitationCanvas');
-	
-	
+
+
 	class CanvasLayer extends HTMLElement {
 		constructor() {
 			super();
 			Object.defineProperty(this, '_events', { value: {} });
-			
+
 			let root = this.attachShadow({ mode: 'open' });
-			let layers = this.getAttribute('layers')?.split(/\s+/).reverse()||['back', 'main'];
-			
+			let layers = this.getAttribute('layers')?.split(/\s+/).reverse() || ['back', 'main'];
+
 			this._pixelScale = +this.getAttribute('pixel-scale') || 1;
-			
+
 			let box = this.getBoundingClientRect();
 			this._width = box.width;
 			this._height = box.height;
-			
+
 			this.canvas = {};
 			this.context = {};
 			this.cameraImitationCanvas = {};
-			
+
 			this.style.display = 'grid';
 			this.style.alignItems = 'center';
 			this.style.justifyItems = 'center';
-			
+
 			let tmp = document.createElement('template');
 			let el = '';
-			
-			for(let i of layers) el += `<canvas style="width:100%; height:100%; grid-area:1/1/1/1;" id="${i}"></canvas>`;
+
+			for(let id of layers) el += `<canvas style="width:100%; height:100%; grid-area:1/1/1/1;" id="${id}"></canvas>`;
 			el += `<div class="slot" style="z-index: 10; width:100%; height:100%; overflow: auto; grid-area:1/1/1/1; align-self:${this.getAttribute('align-slot')||'center'}; justify-self:${this.getAttribute('justify-slot')||'center'};"><slot></slot></div>`;
-			
+
 			tmp.innerHTML += el;
 			root.append(tmp.content.cloneNode(true));
-			
-			for(let i of layers) {
-				this.canvas[i] = root.getElementById(i);
-				this.context[i] = this.canvas[i].getContext('2d');
-				this.cameraImitationCanvas[i] = new CameraImitationCanvas(this.context[i]);
+
+			for(let id of layers) {
+				this.canvas[id] = root.getElementById(id);
+				this.context[id] = this.canvas[id].getContext('2d');
+				this.cameraImitationCanvas[id] = new CameraImitationCanvas(this.context[id]);
 			};
-			
+
 			this.slotElement = root.querySelector('.slot');
-			
+
 			this._sizeUpdate();
 			window.addEventListener('resize', e => {
 				this._sizeUpdate();
 				this.emit('resize', e);
 			});
 		}
-		
+
 		set pixelScale(v) {
 			this._pixelScale = v;
-			this._update();
+			this._sizeUpdate();
 		}
 		get pixelScale() { return this._pixelScale; }
-		
+
 		set width(v) {
 			this._width = v*this._pixelScale;
-			for(let i in this.canvas) this.canvas[i].width = this._width;
+			for(let id in this.canvas) this.canvas[id].width = this._width;
 		}
 		get width() { return this._width; }
-		
+
 		set height(v) {
 			this._height = v*this._pixelScale;
-			for(let i in this.canvas) this.canvas[i].height = this._height;
+			for(let id in this.canvas) this.canvas[id].height = this._height;
 		}
 		get height() { return this._height; }
-		
+
 		get vw() { return this._width/100; }
 		get vh() { return this._height/100; }
 		get vwh() { return this._width/this._height; }
@@ -700,29 +702,29 @@ globalThis.Ver = globalThis.ver = {};
 		get vmax() { return Math.max(this._width, this._height) / 100; }
 		get vmin() { return Math.min(this._width, this._height) / 100; }
 		get size() { return new Vector2(this._width, this._height); }
-		
+
 		_sizeUpdate() {
 			let b = this.getBoundingClientRect();
 			this._width = b.width*this._pixelScale;
 			this._height = b.height*this._pixelScale;
-			
-			for(let i in this.canvas) {
-				this.canvas[i].width = this._width;
-				this.canvas[i].height = this._height;
+
+			for(let id in this.canvas) {
+				this.canvas[id].width = this._width;
+				this.canvas[id].height = this._height;
 			};
 		}
 	};
 	setToStringTeg(CanvasLayer, 'CanvasLayer');
-	
+
 	injectingEventEmitterMethods(CanvasLayer.prototype);
-	
+
 	customElements.define('canvas-layer', CanvasLayer);
 	//======================================================================//
-	
-	
+
+
 	Object.assign(ver, {
-		version: '1.3.0',
-		
+		version: '1.3.1',
+
 		NameSpace, SymbolSpace,
 		createPrivileges, random, JSONcopy,
 		loader, loadImage, loadScript, generateImage,
@@ -731,3 +733,4 @@ globalThis.Ver = globalThis.ver = {};
 		CameraImitationCanvas, CanvasLayer
 	});
 })(globalThis.ver);
+

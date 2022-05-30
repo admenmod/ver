@@ -2,24 +2,6 @@ globalThis.Ver = globalThis.ver = {};
 
 
 (function(ver) {
-	function codeShell(code = '', useAPI = {}, p = {}) {
-		let API = useAPI;
-		if(p.insulatedShell ?? true) {
-			API = new Proxy(useAPI, {
-				has: () => true,
-				get: (target, key, receiver) => key === Symbol.unscopables ? undefined : Reflect.get(target, key, receiver)
-			});
-		};
-
-		if(typeof code !== 'string') code = code.toString().replace(/^function.+?\{(.*)\}$/s, '$1');
-		return function() { eval(`with(API) {${code}}; //# sourceURL=${p.source || 'code'}`); };
-	};
-
-	ver.codeShell = codeShell;
-})(globalThis.ver);
-
-
-(function(ver) {
 	'use strict';
 
 	// helpers
@@ -40,6 +22,12 @@ globalThis.Ver = globalThis.ver = {};
 	const NameSpace = function(namespace = null) {
 		return Object.create(namespace);
 	};
+
+	Object.defineProperty(NameSpace, Symbol.hasInstance, {
+		configurable: true,
+		value: o => o.__proto__ !== Object.getPrototypeOf(o)
+	});
+
 
 	const SymbolSpace = function(symbolspace = null) {
 		let space = Object.create(symbolspace);
@@ -74,15 +62,15 @@ globalThis.Ver = globalThis.ver = {};
 
 		let img = new Image(w, h);
 		img.src = cvs.toDataURL();
-		img.onload = e => res(img);
-		img.onerror = e => rej(e);
+		img.onload = e => res(img, e);
+		img.onerror = e => rej(new Error(`generate image, size: ${w}, ${h}`), e);
 	});
 
 	const loadImage = (src, w, h) => new Promise((res, rej) => {
-		let el = new Image(w, h);
-		el.src = src;
-		el.onload = e => res(el);
-		el.onerror = e => rej(e);
+		let img = new Image(w, h);
+		img.src = src;
+		img.onload = e => res(el, e);
+		img.onerror = e => rej(new Error(`loading image, src: ${src}`), e);
 	});
 
 	const loadScript = (src, p = {}) => new Promise((res, rej) => {
@@ -96,14 +84,15 @@ globalThis.Ver = globalThis.ver = {};
 		parent.append(script);
 
 		script.onload = e => res(e);
-		script.onerror = e => rej(e);
+		script.onerror = e => rej(new Error(`loading script, src: ${src}`), e);
 	});
 
 	const loader = { loadImage, loadScript, cache: new WeakMap() };
 
 
 	class EventEmitter {
-		constructor() {
+		constructor(isUseStore = false) {
+			this.isUseStore = isUseStore;
 			Object.defineProperty(this, '_events', { value: {} });
 		}
 
@@ -145,7 +134,7 @@ globalThis.Ver = globalThis.ver = {};
 			if(!this._events[type]) return false;
 
 			for(let i = 0; i < this._events[type].length; i++) {
-				this._events[type][i].apply(this._events[type].store, args);
+				this._events[type][i].apply(this.isUseStore ? this._events[type].store : this, args);
 
 				if(this._events[type].once[i]) {
 					this._events[type].splice(i, 1);
@@ -400,44 +389,41 @@ globalThis.Ver = globalThis.ver = {};
 
 
 	class Vector2 {
-		constructor(x = 0, y = 0) {
-			this.x = this.y = 0;
-			this.set(x, y);
-		}
-		add(x, y) {
+		constructor(...args) { this.set(...args); }
+		add(x = 0, y = x) {
 			if(u(x.x) && u(x.y)) { this.x += x.x; this.y += x.y; }
 			else if(u(x[0]) && u(x[1])) { this.x += x[0]; this.y += x[1]; }
-			else { this.x += x||0; this.y += u(y) ? y : x||0; };
+			else { this.x += x||0; this.y += y||0; };
 			return this;
 		}
-		sub(x, y) {
+		sub(x = 0, y = x) {
 			if(u(x.x) && u(x.y)) { this.x -= x.x; this.y -= x.y; }
 			else if(u(x[0]) && u(x[1])) { this.x -= x[0]; this.y -= x[1]; }
-			else { this.x -= x||0; this.y -= u(y) ? y : x||0; };
+			else { this.x -= x||0; this.y -= y||0; };
 			return this;
 		}
-		inc(x, y) {
+		inc(x = 0, y = x) {
 			if(u(x.x) && u(x.y)) { this.x *= x.x; this.y *= x.y; }
 			else if(u(x[0]) && u(x[1])) { this.x *= x[0]; this.y *= x[1]; }
-			else { this.x *= x||0; this.y *= u(y) ? y : x||0; };
+			else { this.x *= x||0; this.y *= y||0; };
 			return this;
 		}
-		div(x, y) {
+		div(x = 0, y = x) {
 			if(u(x.x) && u(x.y)) { this.x /= x.x; this.y /= x.y; }
 			else if(u(x[0]) && u(x[1])) { this.x /= x[0]; this.y /= x[1]; }
-			else { this.x /= x||0; this.y /= u(y) ? y : x||0; };
+			else { this.x /= x||0; this.y /= y||0; };
 			return this;
 		}
-		pow(x, y) {
+		pow(x = 0, y = x) {
 			if(u(x.x) && u(x.y)) { this.x **= x.x; this.y **= x.y; }
 			else if(u(x[0]) && u(x[1])) { this.x **= x[0]; this.y **= x[1]; }
-			else { this.x **= x||0; this.y **= u(y) ? y : x||0; };
+			else { this.x **= x||0; this.y **= y||0; };
 			return this;
 		}
-		mod(x, y) {
+		mod(x = 0, y = x) {
 			if(u(x.x) && u(x.y)) { this.x %= x.x; this.y %= x.y; }
 			else if(u(x[0]) && u(x[1])) { this.x %= x[0]; this.y %= x[1]; }
-			else { this.x %= x||0; this.y %= u(y) ? y : x||0; };
+			else { this.x %= x||0; this.y %= y||0; };
 			return this;
 		}
 		abs() {
@@ -455,13 +441,13 @@ globalThis.Ver = globalThis.ver = {};
 			this.x = Math.floor(this.x*i)/i; this.y = Math.floor(this.y*i)/i;
 			return this;
 		}
-		set(x, y) {
+		set(x = 0, y = x) {
 			if(u(x.x) && u(x.y)) { this.x = x.x; this.y = x.y; }
 			else if(u(x[0]) && u(x[1])) { this.x = x[0]; this.y = x[1]; }
-			else { this.x = x||0; this.y = u(y) ? y : x||0; };
+			else { this.x = x||0; this.y = y||0; };
 			return this;
 		}
-		buf(x, y) { return new Vector2(u(x) || this.x, u(y) || this.y); }
+		buf(x = this.x, y = this.y) { return new Vector2(x, y); }
 		getDistance(v) { return Math.sqrt((v.x-this.x) ** 2 + (v.y-this.y) ** 2); }
 
 		moveAngle(mv = 0, a = 0) {
@@ -524,7 +510,7 @@ globalThis.Ver = globalThis.ver = {};
 	setToStringTeg(Vector2, 'Vector2');
 	setConstantProperty(Vector2, 'ZERO', Object.freeze(new Vector2()));
 
-	const vec2 = (x, y) => new Vector2(x, y);
+	const vec2 = (...args) => new Vector2(...args);
 	setHiddenProperty(Vector2.prototype, 'plus', Vector2.prototype.add);
 	setHiddenProperty(Vector2.prototype, 'minus', Vector2.prototype.sub);
 	//======================================================================//
@@ -789,7 +775,7 @@ globalThis.Ver = globalThis.ver = {};
 
 
 	Object.assign(ver, {
-		version: '1.3.2',
+		version: '1.3.3',
 
 		NameSpace, SymbolSpace,
 		createPrivileges, random, JSONcopy,
@@ -798,5 +784,24 @@ globalThis.Ver = globalThis.ver = {};
 		Vector2, vec2, VectorN, vecN,
 		CameraImitationCanvas, CanvasLayer
 	});
+})(globalThis.ver);
+
+
+(function(ver) {
+	const { NameSpace } = ver;
+
+	function codeShell(code = '', env = new NameSpace(), p = {}) {
+		if(p.insulate ?? true) {
+			env = new Proxy(env, {
+				has: () => true,
+				get: (target, key, receiver) => key === Symbol.unscopables ? undefined : Reflect.get(target, key, receiver)
+			});
+		};
+
+		if(typeof code !== 'string') code = code.toString().replace(/^function.+?\{(.*)\}$/s, '$1');
+		return function() { eval(`with(env) {${code}}; //# sourceURL=${p.source || 'code'}`); };
+	};
+
+	ver.codeShell = codeShell;
 })(globalThis.ver);
 

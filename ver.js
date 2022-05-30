@@ -310,6 +310,42 @@ globalThis.Ver = globalThis.ver = {};
 	setToStringTeg(Child, 'Child');
 
 
+	class Area {
+		constructor(q = 0, p, d, b) {
+			this.q = q; this.p = p;
+			this.d = d; this.b = b;
+		}
+
+		set q(v) { this._q = v; }
+		get q() { return this._q; }
+		set p(v) { this._p = v; }
+		get p() { return this._p ?? this._q; }
+		set d(v) { this._d = v; }
+		get d() { return this._d ?? this._q; }
+		set b(v) { this._b = v; }
+		get b() { return this._b ?? this._d ?? this._p; }
+
+		set x(v) { this.q = v; }
+		get x() { return this.q; }
+		set w(v) { this.p = v; }
+		get w() { return this.p; }
+		set y(v) { this.d = v; }
+		get y() { return this.d; }
+		set h(v) { this.b = v; }
+		get h() { return this.b; }
+
+		set x1(v) { this.q = v; }
+		get x1() { return this.q; }
+		set x2(v) { this.p = v; }
+		get x2() { return this.p; }
+		set y1(v) { this.d = v; }
+		get y1() { return this.d; }
+		set y2(v) { this.b = v; }
+		get y2() { return this.b; }
+	};
+	setToStringTeg(Area, 'Area');
+
+
 	class VectorN extends Array {
 		constructor(...args) {
 			super();
@@ -775,13 +811,13 @@ globalThis.Ver = globalThis.ver = {};
 
 
 	Object.assign(ver, {
-		version: '1.3.3',
+		version: '1.4.0',
 
 		NameSpace, SymbolSpace,
 		createPrivileges, random, JSONcopy,
 		loader, loadImage, loadScript, generateImage,
 		EventEmitter, Scene, Child,
-		Vector2, vec2, VectorN, vecN,
+		Vector2, vec2, VectorN, vecN, Area,
 		CameraImitationCanvas, CanvasLayer
 	});
 })(globalThis.ver);

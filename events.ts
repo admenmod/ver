@@ -9,31 +9,33 @@ export class Event<This = any, Args extends any[] = any[]> {
 
 	constructor(_this: This) { this._this = _this; }
 
-	public on(fn: FnOnce<This, Args>) {
+	public on<T extends This>(fn: FnOnce<T, Args>): void {
+		//@ts-ignore
 		this._handlers.push(fn);
 	}
 
-	public once(fn: FnOnce<This, Args>) {
+	public once<T extends This>(fn: FnOnce<T, Args>): void {
 		fn[isOnceSymbol] = true;
+		//@ts-ignore
 		this._handlers.push(fn);
 	}
 
-	public off(fn: FnOnce<This, Args>) {
-		let l: number = this._handlers.indexOf(fn);
-		if(~l) return;
-		this._handlers.splice(l, 1);
+	public off<T extends This>(fn?: FnOnce<T, Args>): void {
+		if(fn) {
+			//@ts-ignore
+			const l: number = this._handlers.indexOf(fn);
+			if(~l) return;
+			this._handlers.splice(l, 1);
+		}
+		else this._handlers.length = 0;
 	}
 
-	public emit(...args: Args) {
+	public emit(...args: Args): void {
 		for(let i = 0; i < this._handlers.length; ++i) {
 			const fn = this._handlers[i];
 			fn.apply(this._this, args);
 			if(fn[isOnceSymbol]) this.off(fn);
 		}
-	}
-
-	public clear() {
-		this._handlers.length = 0;
 	}
 }
 
@@ -58,76 +60,79 @@ type ArgsEvent<T extends object, Type extends ConvertDel<KeysEvents<T>>> =
 export class EventDispatcher {
 	public static on<This extends typeof EventDispatcher,
 		Type extends ConvertDel<KeysEvents<This>>,
-		Args extends ArgsEvent<This, Type>
-	>(this: This, type: Type, fn: (this: This, ...args: Args) => any) {
 		//@ts-ignore
-		this[`@${type}`].on(fn);
+		ThisFn extends This[event_name<Type>]['_this'],
+		Args extends ArgsEvent<This, Type>
+	>(this: This, type: Type, fn: (this: ThisFn, ...args: Args) => any): void {
+		//@ts-ignore
+		return this[`@${type}`].on(fn);
 	}
 
 	public static once<This extends typeof EventDispatcher,
 		Type extends ConvertDel<KeysEvents<This>>,
+		//@ts-ignore
+		ThisFn extends This[event_name<Type>]['_this'],
 		Args extends ArgsEvent<This, Type>
-	>(type: Type, fn: (this: This, ...args: Args) => any) {
-		((this as any)[`@${type}`] as Event<This, Args>).once(fn);
+	>(this: This, type: Type, fn: (this: ThisFn, ...args: Args) => any): void {
+		//@ts-ignore
+		return this[`@${type}`].once(fn);
 	}
 
 	public static off<This extends typeof EventDispatcher,
 		Type extends ConvertDel<KeysEvents<This>>,
-		Args extends ArgsEvent<This, Type>
-	>(this: This, type: Type, fn: (this: This, ...args: Args) => any) {
 		//@ts-ignore
-		this[`@${type}`].off(fn);
+		ThisFn extends This[event_name<Type>]['_this'],
+		Args extends ArgsEvent<This, Type>
+	>(this: This, type: Type, fn?: (this: ThisFn, ...args: Args) => any): void {
+		//@ts-ignore
+		return this[`@${type}`].off(fn);
 	}
 
 	public static emit<This extends typeof EventDispatcher,
 		Type extends ConvertDel<KeysEvents<This>>,
 		Args extends ArgsEvent<This, Type>
-	>(this: This, type: Type, ...args: Args) {
+	>(this: This, type: Type, ...args: Args): void {
 		//@ts-ignore
-		this[`@${type}`].emit(...args);
-	}
-
-	public static clear<This extends typeof EventDispatcher, Type extends ConvertDel<KeysEvents<This>>>(type: Type) {
-		//@ts-ignore
-		this[`@${type}`].clear();
+		return this[`@${type}`].emit(...args);
 	}
 
 
 	public on<This extends EventDispatcher,
 		Type extends ConvertDel<KeysEvents<This>>,
-		Args extends ArgsEvent<This, Type>
-	>(this: This, type: Type, fn: (this: This, ...args: Args) => any) {
 		//@ts-ignore
-		this[`@${type}`].on(fn);
+		ThisFn extends This[event_name<Type>]['_this'],
+		Args extends ArgsEvent<This, Type>
+	>(this: This, type: Type, fn: (this: ThisFn, ...args: Args) => any): void {
+		//@ts-ignore
+		return this[`@${type}`].on(fn);
 	}
 
 	public once<This extends EventDispatcher,
 		Type extends ConvertDel<KeysEvents<This>>,
-		Args extends ArgsEvent<This, Type>
-	>(this: This, type: Type, fn: (this: This, ...args: Args) => any) {
 		//@ts-ignore
-		this[`@${type}`].once(fn);
+		ThisFn extends This[event_name<Type>]['_this'],
+		Args extends ArgsEvent<This, Type>
+	>(this: This, type: Type, fn: (this: ThisFn, ...args: Args) => any): void {
+		//@ts-ignore
+		return this[`@${type}`].once(fn);
 	}
 
 	public off<This extends EventDispatcher,
-		Type extends ConvertDel<KeysEvents<this>>,
-		Args extends ArgsEvent<this, Type>
-	>(this: This, type: Type, fn: (this: This, ...args: Args) => any) {
+		Type extends ConvertDel<KeysEvents<This>>,
 		//@ts-ignore
-		this[`@${type}`].off(fn);
+		ThisFn extends This[event_name<Type>]['_this'],
+		Args extends ArgsEvent<This, Type>
+	>(this: This, type: Type, fn?: (this: ThisFn, ...args: Args) => any): void {
+		//@ts-ignore
+		return this[`@${type}`].off(fn);
 	}
 
 	public emit<This extends EventDispatcher,
 		Type extends ConvertDel<KeysEvents<This>>,
 		Args extends ArgsEvent<This, Type>
-	>(this: This, type: Type, ...args: Args) {
+	>(this: This, type: Type, ...args: Args): void {
 		//@ts-ignore
-		this[`@${type}`].emit(...args);
-	}
-
-	public clear<This extends EventDispatcher, Type extends ConvertDel<KeysEvents<This>>>(this: This, type: Type) {
-		//@ts-ignore
-		this[`@${type}`].clear();
+		return this[`@${type}`].emit(...args);
 	}
 }
 
@@ -148,7 +153,7 @@ export class EventEmitter {
 
 			Object.defineProperty(this._events[type], 'store', { value: {} });
 
-			let store = this._events[type].store;
+			const store = this._events[type].store;
 			store.type = type;
 			store.self = store.emitter = this;
 		}
@@ -158,12 +163,12 @@ export class EventEmitter {
 		return this;
 	}
 
-	public static off<args_t extends any[] = any[]>(type: PropertyKey, fn: FnOnce<any, args_t>) {
+	public static off<args_t extends any[] = any[]>(type?: PropertyKey, fn?: FnOnce<any, args_t>) {
 		if(!type) for(let i in this._events) delete this._events[i];
 		else if(!this._events[type]) return this;
 		else if(!fn) delete this._events[type];
 		else {
-			let l = this._events[type].indexOf(fn);
+			const l = this._events[type].indexOf(fn);
 			if(~l) this._events[type].splice(l, 1);
 		}
 
@@ -180,8 +185,6 @@ export class EventEmitter {
 
 		return true;
 	}
-
-	public static remove = EventEmitter.off;
 
 
 	protected _events!: { [type: PropertyKey]: FnOnce[] & { store: any } };
@@ -201,7 +204,7 @@ export class EventEmitter {
 
 			Object.defineProperty(this._events[type], 'store', { value: {} });
 
-			let store = this._events[type].store;
+			const store = this._events[type].store;
 			store.type = type;
 			store.self = store.emitter = this;
 		}
@@ -211,12 +214,12 @@ export class EventEmitter {
 		return this;
 	}
 
-	public off<args_t extends any[] = any[]>(type: PropertyKey, fn: FnOnce<any, args_t>) {
+	public off<args_t extends any[] = any[]>(type?: PropertyKey, fn?: FnOnce<any, args_t>) {
 		if(!type) for(let i in this._events) delete this._events[i];
 		else if(!this._events[type]) return this;
 		else if(!fn) delete this._events[type];
 		else {
-			let l = this._events[type].indexOf(fn);
+			const l = this._events[type].indexOf(fn);
 			if(~l) this._events[type].splice(l, 1);
 		}
 
@@ -233,14 +236,6 @@ export class EventEmitter {
 
 		return true;
 	}
-
-	//@ts-ignore
-	public remove<args_t extends any[] = any[]>(type: PropertyKey, fn: FnOnce<any, args_t>): this;
 }
 
 Object.defineProperty(EventEmitter, '_events', { value: {} });
-
-Object.defineProperty(EventEmitter.prototype, 'remove', {
-	value: EventEmitter.prototype.off,
-	writable: true, enumerable: false, configurable: true
-});

@@ -4,7 +4,7 @@ import { Event, EventDispatcher } from './events';
 export class MainLoop extends EventDispatcher {
 	public '@start' = new Event<MainLoop, []>(this);
 	public '@stop' = new Event<MainLoop, []>(this);
-	public '@update' = new Event<MainLoop, [number]>(this);
+	public '@update' = new Event<MainLoop, [dt: number]>(this);
 
 	public isEnabled: boolean;
 	public prevTime: number;
@@ -43,9 +43,9 @@ export class MainLoop extends EventDispatcher {
 			requestAnimationFrame(_update);
 		};
 
-		requestAnimationFrame(_update);
-
 		this.emit('start');
+
+		requestAnimationFrame(_update);
 	}
 
 	public stop(): void {

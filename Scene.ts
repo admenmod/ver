@@ -109,12 +109,12 @@ export class Scene extends EventDispatcher {
 	public detachSceneTree(name: string): void {
 		const scene = this._tree[name];
 
-		scene._exit_tree(scene.owner!);
-		scene['@exit_tree'].emit(scene.owner!);
-		this['@exit_tree:child'].emit(scene);
-		this.root['@root#exit_tree:child'].emit(scene);
-
 		scene[EXIT_TREE_ROOT](scene.root, scene.name);
+
+		this.root['@root#exit_tree:child'].emit(scene);
+		this['@exit_tree:child'].emit(scene);
+		scene['@exit_tree'].emit(scene.owner!);
+		scene._exit_tree(scene.owner!);
 
 		delete this._tree[name];
 
@@ -143,19 +143,6 @@ export class Scene extends EventDispatcher {
 	}
 	protected async _destroy(): Promise<void> {
 		await Promise.all([...this.tree()].map(i => i.destroy()));
-
-		this['@enter_tree'].off();
-		this['@exit_tree'].off();
-
-		this['@enter_tree:child'].off();
-		this['@exit_tree:child'].off();
-
-		this['@enter_tree:root'].off();
-		this['@exit_tree:root'].off();
-
-		this['@init'].off();
-		this['@destroy'].off();
-		this['@ready'].off();
 	}
 
 
@@ -175,11 +162,10 @@ export class Scene extends EventDispatcher {
 		if(this._isInited || !this.isLoaded) return;
 
 		await this._init();
+		this['@init'].emit();
 
 		this._isInited = true;
 		this._isExited = false;
-
-		this['@init'].emit();
 
 		if(this.isRoot) this.ready();
 	}
@@ -187,12 +173,13 @@ export class Scene extends EventDispatcher {
 	public async destroy(): Promise<void> {
 		if(this._isExited || this.isUnloaded) return;
 
+		this['@destroy'].emit();
 		await this._destroy();
+
+		this.events_off(true);
 
 		this._isExited = true;
 		this._isInited = false;
-
-		this['@destroy'].emit();
 	}
 
 
@@ -217,15 +204,7 @@ export class Scene extends EventDispatcher {
 	public static get isUnloaded(): boolean { return this._isUnloaded; }
 
 	protected static async _load(scene: typeof this): Promise<void> {
-		const proms: Promise<void>[] = [];
-		const cache: any = [];
-		for(const id in this._TREE) {
-			if(!cache.includes(this._TREE[id])) {
-				cache.push(this._TREE[id]);
-				if(!this._TREE[id]._isLoaded && this._TREE[id]._isUnloaded) proms.push(this._TREE[id].load());
-			}
-		}
-		await Promise.all(proms);
+		await Promise.all([...this.tree()].map(i => i.load()));
 	}
 	protected static async _unload(scene: typeof this): Promise<void> {
 		await Promise.all([...this.tree()].map(i => i.unload()));
@@ -241,44 +220,57 @@ export class Scene extends EventDispatcher {
 		this._init_TREE();
 
 		await this._load(this);
+		this.emit('load', this);
 
 		this._isLoaded = true;
 		this._isUnloaded = false;
-
-		this.emit('load', this);
 	}
 
 	public static async unload(): Promise<void> {
 		if(this._isUnloaded) return;
 
+		this.emit('unload', this);
 		await this._unload(this);
+
+		this.events_off(true);
 
 		this._isUnloaded = true;
 		this._isLoaded = false;
-
-		this.emit('unload', this);
 	}
 
 
-	public *tree(): Generator<Scene> {
-		for(const id in this._tree) yield this._tree[id];
+	public *chein_owners(): Generator<Scene> {
+		let w: Scene | null = this;
+		while(w = w.owner) yield w;
 	}
 
-	public *root_tree(): Generator<Scene> {
-		for(const s of this.tree()) {
-			yield s;
-			yield* s.root_tree();
+
+	public *tree(a: boolean = false): Generator<Scene> {
+		if(!a) {
+			for(const id in this._tree) yield this._tree[id];
+		} else {
+			for(const s of this.tree()) {
+				yield s;
+				yield* s.tree(true);
+			}
 		}
 	}
 
-	public static *tree(): Generator<typeof Scene> {
-		for(const id in this._TREE) yield this._TREE[id];
+	public static *tree(a: boolean = false): Generator<typeof Scene> {
+		if(!a) {
+			for(const id in this._TREE) yield this._TREE[id];
+		} else {
+			for(const s of this.tree()) {
+				yield s;
+				yield* s.tree(true);
+			}
+		}
 	}
 
-	public static *root_tree(): Generator<typeof Scene> {
-		for(const s of this.tree()) {
-			yield s;
-			yield* s.root_tree();
+
+	public *getTreeOf<T extends typeof Scene>(T: T): Generator<getInstanceOf<T>> {
+		for(const i of this.tree(true)) {
+			if(i instanceof T) yield i as getInstanceOf<T>;
 		}
 	}
 }

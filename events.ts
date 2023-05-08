@@ -154,4 +154,28 @@ export class EventDispatcher {
 		//@ts-ignore
 		return this[`@${type}`].emit(...args);
 	}
+
+
+	public events_off(a: boolean = false): void {
+		for(const e of this.events(a)) e.off();
+	}
+
+	public static events_off(a: boolean = false): void {
+		for(const e of this.events(a)) e.off();
+	}
+
+
+	public *events(a: boolean = false): Generator<Event> {
+		for(const id in this) {
+			//@ts-ignore
+			if((a || id[0] === '@') && this[id] instanceof Event) yield this[id];
+		}
+	}
+
+	public static *events(a: boolean = false): Generator<Event> {
+		for(const id in this) {
+			//@ts-ignore
+			if((a || id[0] === '@') && this[id] instanceof Event) yield this[id];
+		}
+	}
 }

@@ -87,7 +87,7 @@ export class TouchesController {
 	isStaticRectIntersect(a: Parameters<typeof Touch.prototype.isStaticRectIntersect>[0]) {
 		return this.touches.some(i => i.isStaticRectIntersect(a));
 	}
-	nullify() { for(let i = 0; i < this.touches.length; i++) this.touches[i].nullify(); }
+	nullify(dt: number) { for(let i = 0; i < this.touches.length; i++) this.touches[i].nullify(dt); }
 }
 
 
@@ -136,7 +136,7 @@ export class Touch extends Vector2 {
 		return false;
 	}
 
-	public nullify(dt: number = 10) {
+	public nullify(dt: number) {
 		this.fP = this.fU = this.fC = this.fM = this.fdbC = false;
 		if(this.down) this.downTime += dt;
 	}

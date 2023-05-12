@@ -14,7 +14,11 @@ export class MainLoop extends EventDispatcher {
 	public dt!: number;
 
 
-	constructor(p: any = {}) {
+	constructor(p: {
+		maxDiff?: number,
+		mindt?: number,
+		fps?: number
+	} = {}) {
 		super();
 
 		this.isEnabled = false;
@@ -51,5 +55,10 @@ export class MainLoop extends EventDispatcher {
 	public stop(): void {
 		if(!this.isEnabled) return;
 		this.isEnabled = false;
+	}
+
+
+	public destroy(): void {
+		this.events_off(true);
 	}
 };

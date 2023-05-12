@@ -1,233 +1,125 @@
-import type { getInstanceOf } from './types';
-import { EventDispatcher, Event } from './events';
+import { Event, EventDispatcher } from './events';
 
 
-type getTree<T extends Scene> = { [K in keyof ReturnType<T['TREE']>]: getInstanceOf<ReturnType<T['TREE']>[K]>; };
+type getTree<T extends Scene> = { [K in keyof ReturnType<T['TREE']>]: InstanceType<ReturnType<T['TREE']>[K]>; };
+type pos_t = number | 'start' | 'end';
 
-
-const CLASS = Symbol('class');
-const ENTER_TREE_ROOT = Symbol('enter_tree:root');
-const EXIT_TREE_ROOT = Symbol('exit_tree:root');
 
 export class Scene extends EventDispatcher {
-	/** Scene entry into tree */
-	public '@enter_tree' = new Event<Scene, [owner: Scene]>(this);
-	/** Scene exit from tree */
-	public '@exit_tree' = new Event<Scene, [owner: Scene]>(this);
-
-	/** Child scene entry in own tree */
-	public '@enter_tree:child' = new Event<Scene, [child: Scene]>(this);
-	/** Child scene exit from own tree */
-	public '@exit_tree:child' = new Event<Scene, [child: Scene]>(this);
-
-	/** Old root entered the tree - new root */
-	public '@enter_tree:root' = new Event<Scene, [root: Scene]>(this);
-	/** The parent scene exited from root - new root */
-	public '@exit_tree:root' = new Event<Scene, [root: Scene]>(this);
-
-	/** Root scene event, child scene entry into tree */
-	public '@root#enter_tree:child' = new Event<Scene, [child: Scene]>(this);
-	/** Root scene event, child scene exit from tree */
-	public '@root#exit_tree:child' = new Event<Scene, [child: Scene]>(this);
-
+	public '@ready' = new Event<Scene, []>(this);
 	public '@init' = new Event<Scene, []>(this);
 	public '@destroy' = new Event<Scene, []>(this);
-	public '@ready' = new Event<Scene, []>(this);
+	public '@destroyed' = new Event<Scene, []>(this);
 
+	private _isReady: boolean = false;
+	private _isInited: boolean = false;
+	private _isDestroyed: boolean = false;
 
-	protected readonly [CLASS]: typeof Scene;
-
-	private _owner: Scene | null = null;
-	public get owner() { return this._owner; }
-
-	private _name: string = this.constructor.name;
-	public get name() { return this._name; }
-
-	public get isRoot(): boolean { return this.owner === null; }
-	public get root(): Scene { return this._owner?.root || this; }
-
-
-	protected static _TREE: Record<string, typeof Scene>;
-	protected _tree!: Record<string, Scene>;
-
-	public TREE(): Record<string, typeof Scene> { return {}; }
-
-	public get(): getTree<this>;
-	public get<Name extends keyof getTree<this>>(name: Name): getTree<this>[Name];
-	public get(name: string): Scene;
-	public get(name: any = null) {
-		if(name === null) return this._tree;
-		return this._tree[name];
-	}
-
-
-	protected _isReady: boolean = false;
-	protected _isInited: boolean = false;
-	protected _isExited: boolean = true;
-
-	public get isReady(): boolean { return this._isReady; }
 	public get isInited(): boolean { return this._isInited; }
-	public get isExited(): boolean { return this._isExited; }
+	public get isDestroyed(): boolean { return this._isDestroyed; }
 
-	public get isLoaded(): boolean { return this[CLASS]._isLoaded; }
-	public get isUnloaded(): boolean { return this[CLASS]._isUnloaded; }
+	public get isLoaded(): boolean { return (this.constructor as typeof Scene).isLoaded; }
+	public get isUnloaded(): boolean { return (this.constructor as typeof Scene).isUnloaded; }
 
-
-	constructor() {
-		super();
-		this[CLASS] = new.target;
-
-		this._init_tree();
-	}
-
-	private [ENTER_TREE_ROOT](root: Scene, name: string): void {
-		this['@enter_tree:root'].emit(root);
-		for(const id in this._tree) this._tree[id][ENTER_TREE_ROOT](root, name);
-	}
-	private [EXIT_TREE_ROOT](root: Scene, name: string): void {
-		this['@exit_tree:root'].emit(root);
-		for(const id in this._tree) this._tree[id][EXIT_TREE_ROOT](root, name);
-	}
-
-	public attachSceneTree<ClassRef extends typeof Scene>(name: string, ClassRef: ClassRef): void {
-		if(this._tree[name]) throw new Error(`(${name}) this name is already in use`);
-
-		const scene = new ClassRef();
-
-		this._tree[name] = scene;
-		scene._owner = this;
-		scene._name = name;
-
-		scene._enter_tree(scene.owner!);
-		scene['@enter_tree'].emit(scene.owner!);
-		this['@enter_tree:child'].emit(scene);
-		this.root['@root#enter_tree:child'].emit(scene);
-
-		scene[ENTER_TREE_ROOT](scene.root, scene.name);
-	}
-
-	public detachSceneTree(name: string): void {
-		const scene = this._tree[name];
-
-		scene[EXIT_TREE_ROOT](scene.root, scene.name);
-
-		this.root['@root#exit_tree:child'].emit(scene);
-		this['@exit_tree:child'].emit(scene);
-		scene['@exit_tree'].emit(scene.owner!);
-		scene._exit_tree(scene.owner!);
-
-		delete this._tree[name];
-
-		scene._owner = null;
-		scene._name = scene.constructor.name;
-	}
-
-	private _init_tree(): void {
-		if(!this.isLoaded) throw new Error(`(${this.name}) you can't instantiate a scene before it's loaded`);
-		if(this._tree) return;
-
-		this._tree = Object.create(null);
-
-		for(const id in this[CLASS]._TREE) {
-			this.attachSceneTree(id, this[CLASS]._TREE[id]);
-		}
-	}
-
-
+	/** @virtual */
 	protected _ready(): void {}
-	protected _enter_tree(owner: Scene): void {}
-	protected _exit_tree(owner: Scene): void {}
-
+	/** @virtual */
 	protected async _init(): Promise<void> {
-		await Promise.all([...this.tree()].map(i => i.init()));
+		await Promise.all([...this.children()].map(i => i.init()));
 	}
+	/** @virtual */
 	protected async _destroy(): Promise<void> {
-		await Promise.all([...this.tree()].map(i => i.destroy()));
+		await Promise.all([...this.children()].map(i => i.destroy()));
 	}
 
 
-	public ready(): void {
-		if(this._isReady || !this._isInited || !this.isLoaded) return;
+	public ready(): boolean {
+		if(this._isReady || !this._isInited || !this.isLoaded) return false;
+
+		for(const scene of this.children()) scene.ready();
 
 		this._ready();
-
-		for(const scene of this.tree()) scene.ready();
 
 		this._isReady = true;
 
 		this['@ready'].emit();
+
+		return true;
 	}
 
-	public async init(): Promise<void> {
-		if(this._isInited || !this.isLoaded) return;
+	public async init(): Promise<boolean> {
+		if(this._isInited || !this.isLoaded) return false;
+
+		this.__init_tree();
 
 		await this._init();
 		this['@init'].emit();
 
 		this._isInited = true;
-		this._isExited = false;
+		this._isDestroyed = false;
 
 		if(this.isRoot) this.ready();
+
+		return true;
 	}
 
-	public async destroy(): Promise<void> {
-		if(this._isExited || this.isUnloaded) return;
+	public async destroy(): Promise<boolean> {
+		if(!this._isInited || this._isDestroyed) return false;
 
 		this['@destroy'].emit();
 		await this._destroy();
 
+		this._children.length = 0;
+
+		this._isDestroyed = true;
+		this._isInited = false;
+
+		this['@destroyed'].emit();
+
 		this.events_off(true);
 
-		this._isExited = true;
-		this._isInited = false;
+		return true;
+	}
+
+	private static _isLoaded: boolean;
+	private static _isUnloaded: boolean;
+
+	public static get isLoaded(): boolean {
+		return Object.prototype.hasOwnProperty.call(this, '_isLoaded') ? this._isLoaded : this._isLoaded = false;
+	}
+	public static get isUnloaded(): boolean {
+		return Object.prototype.hasOwnProperty.call(this, '_isUnloaded') ? this._isUnloaded : this._isUnloaded = false;
+	}
+
+	/** @virtual */
+	protected static async _load(Scene: typeof this): Promise<void> {
+		await Promise.all([...this.TREE()].map(i => i.load()));
+	}
+	/** @virtual */
+	protected static async _unload(Scene: typeof this): Promise<void> {
+		await Promise.all([...this.TREE()].map(i => i.unload()));
 	}
 
 
-	private static _init_TREE(path: any[] = [], target_error: any = this.name): void {
-		if(this._TREE) return;
+	public static '@load' = new Event<typeof this, [Scene: typeof this]>(this);
+	public static '@unload' = new Event<typeof this, [Scene: typeof this]>(this);
 
-		this._TREE = this.prototype.TREE.call(null);
+	public static async load(): Promise<boolean> {
+		if(this.isLoaded) return false;
 
-		if(path.includes(this._TREE)) {
-			throw new Error(`cyclic dependence found "${this.name} -> ... -> ${target_error} -> ${this.name}"`);
-		}
-
-		for(let id in this._TREE) {
-			this._TREE[id]._init_TREE([...path, this._TREE], this.name);
-		}
-	}
-
-	protected static _isLoaded: boolean = false;
-	protected static _isUnloaded: boolean = true;
-
-	public static get isLoaded(): boolean { return this._isLoaded; }
-	public static get isUnloaded(): boolean { return this._isUnloaded; }
-
-	protected static async _load(scene: typeof this): Promise<void> {
-		await Promise.all([...this.tree()].map(i => i.load()));
-	}
-	protected static async _unload(scene: typeof this): Promise<void> {
-		await Promise.all([...this.tree()].map(i => i.unload()));
-	}
-
-
-	public static '@load' = new Event<typeof this, [typeof this]>(this);
-	public static '@unload' = new Event<typeof this, [typeof this]>(this);
-
-	public static async load(): Promise<void> {
-		if(this._isLoaded) return;
-
-		this._init_TREE();
+		this.__init_TREE();
 
 		await this._load(this);
 		this.emit('load', this);
 
 		this._isLoaded = true;
 		this._isUnloaded = false;
+
+		return true;
 	}
 
-	public static async unload(): Promise<void> {
-		if(this._isUnloaded) return;
+	public static async unload(): Promise<boolean> {
+		if(!this.isLoaded) return false;
 
 		this.emit('unload', this);
 		await this._unload(this);
@@ -236,41 +128,229 @@ export class Scene extends EventDispatcher {
 
 		this._isUnloaded = true;
 		this._isLoaded = false;
+
+		return true;
+	}
+
+
+	public '@child_entered_tree' = new Event<Scene, [scene: Scene]>(this);
+	public '@child_exiting_tree' = new Event<Scene, [scene: Scene]>(this);
+	public '@child_exited_tree' = new Event<Scene, [scene: Scene]>(this);
+
+	public '@tree_entered' = new Event<Scene, [parent: Scene]>(this);
+	public '@tree_exiting' = new Event<Scene, [parent: Scene]>(this);
+	public '@tree_exited' = new Event<Scene, [parent: Scene]>(this);
+
+	public '@renamed' = new Event<Scene, []>(this);
+
+
+	protected _parent: Scene | null = null;
+	protected get parent() { return this._parent; }
+
+	protected _children!: Scene[];
+
+	private _owner: Scene | null = null;
+	public get owner() { return this._owner; }
+
+	private _name: string = this.constructor.name;
+	public get name() { return this._name; }
+	public set name(v) {
+		v = v.replace(/@|\s/g, '');
+
+		if(this._name === v) return;
+		if(this._parent && this._parent.getChild(v)) throw new Error(`(${v}) this name is already in use`);
+
+		this._name = v;
+		this['@renamed'].emit();
+	}
+
+	public get isRoot(): boolean { return this._parent === null; }
+
+	public get root(): Scene { return this._owner?.root || this; }
+
+
+	private _isEmbedded: boolean = false;
+	public get isEmbedded() { return this._isEmbedded; }
+
+	public TREE(): Record<string, typeof Scene> { return {}; }
+	protected static _TREE: Record<string, typeof Scene>;
+
+	constructor() {
+		super();
+
+		if(!this.isLoaded) throw new Error(`(${this.name}) you can't instantiate a scene before it's loaded`);
+	}
+
+	private __init_tree(): void {
+		if(!this.isLoaded) throw new Error(`(${this.name}) you can't instantiate a scene before it's loaded`);
+		if(this._children) return;
+
+		this._children = [];
+
+		for(const name in (this.constructor as typeof Scene)._TREE) {
+			const Class = (this.constructor as typeof Scene)._TREE[name];
+			if(Class.rootonly) throw new Error(`(${Class.name}) this scene rootonly = true`);
+
+			const scene = new Class();
+			scene._owner = this;
+			scene._parent = this;
+			scene._isEmbedded = true;
+			scene._name = name;
+
+			this._children.push(scene);
+		}
+	}
+
+
+	public getChild<Name extends keyof getTree<this>>(name: Name): getTree<this>[Name] | null;
+	public getChild(name: string): Scene | null;
+	public getChild(name: string): Scene | null {
+		for(let i = 0; i < this._children.length; i++) {
+			if(this._children[i].name === name) return this._children[i];
+		}
+
+		return null;
+	}
+
+
+	public addChild<Class extends Scene>(scene: Class, name: string = scene.name, pos: pos_t = 'end'): Class {
+		if(!this.isInited) throw new Error(`self scene is not inited`);
+		if(!scene.isInited) throw new Error(`this scene is not inited`);
+
+		if(scene._parent) throw new Error(`this scene is not root`);
+
+		if(this._children.some(i => i.name === name)) throw new Error(`(${name}) this name is already in use`);
+		if((scene.constructor as typeof Scene).rootonly) {
+			throw new Error(`(${(scene.constructor as typeof Scene).name}) this scene rootonly = true`);
+		}
+
+		if(typeof pos === 'number') this._children.splice(pos, 0, scene);
+		else if(pos === 'start') this._children.unshift(scene);
+		else if(pos === 'end') this._children.push(scene);
+		else throw new Error('invalid argument "pos"');
+
+		scene._parent = this;
+
+		for(const s of this.children(true)) s['@tree_entered'].emit(this);
+		for(const p of this.chein_parents()) p['@child_entered_tree'].emit(scene);
+
+		return scene;
+	}
+
+	public removeChild(name: string, t: boolean = false): Scene {
+		if(!this.isInited) throw new Error(`self scene is not inited`);
+
+		const scene = this._children.find(i => i.name === name);
+
+		if(!scene) throw new Error(`(${name}) no scene with that name`);
+		if(t || scene._isEmbedded) throw new Error(`(${name}) this scene is embedded`);
+
+		const l = this._children.indexOf(scene);
+
+		for(const s of this.children(true)) s['@tree_exiting'].emit(this);
+		for(const p of this.chein_parents()) p['@child_exiting_tree'].emit(scene);
+
+		scene._parent = null;
+		this._children.splice(l, 1);
+
+		for(const s of this.children(true)) s['@tree_exited'].emit(this);
+		for(const p of this.chein_parents()) p['@child_exited_tree'].emit(scene);
+
+		return scene;
+	}
+
+	public moveChild(child: Scene, pos: pos_t) {
+		// if(typeof pos === 'number') this._children.splice(pos, 0, scene);
+		// else if(pos === 'start') this._children.unshift(scene);
+		// else if(pos === 'end') this._children.push(scene);
+		// else throw new Error('invalid argument "pos"');
+	}
+
+
+	private static __init_TREE(path: any[] = [], target_error: any = this.name): void {
+		if(this._TREE) return;
+
+		this._TREE = Object.create(null);
+		const TREE = this.prototype.TREE.call(null);
+		for(const name in TREE) this._TREE[name] = TREE[name];
+
+		if(path.includes(this._TREE)) {
+			throw new Error(`cyclic dependence found "${this.name} -> ... -> ${target_error} -> ${this.name}"`);
+		}
+
+		for(let name in this._TREE) {
+			const Class = this._TREE[name];
+			if(Class.rootonly) throw new Error(`(${Class.name}) this scene rootonly = true`);
+			Class.__init_TREE([...path, this._TREE], this.name);
+		}
+	}
+
+
+	protected static _rootonly: boolean;
+	public static get rootonly() {
+		return Object.prototype.hasOwnProperty.call(this, '_rootonly') ? this._rootonly : this._rootonly = false;
 	}
 
 
 	public *chein_owners(): Generator<Scene> {
 		let w: Scene | null = this;
-		while(w = w.owner) yield w;
+		while(w = w._owner) yield w;
 	}
 
-
-	public *tree(a: boolean = false): Generator<Scene> {
-		if(!a) {
-			for(const id in this._tree) yield this._tree[id];
-		} else {
-			for(const s of this.tree()) {
-				yield s;
-				yield* s.tree(true);
-			}
-		}
-	}
-
-	public static *tree(a: boolean = false): Generator<typeof Scene> {
-		if(!a) {
-			for(const id in this._TREE) yield this._TREE[id];
-		} else {
-			for(const s of this.tree()) {
-				yield s;
-				yield* s.tree(true);
-			}
+	public *getChainOwnersOf<T extends typeof Scene>(T: T): Generator<InstanceType<T>> {
+		for(const i of this.chein_owners()) {
+			if(i instanceof T) yield i as InstanceType<T>;
 		}
 	}
 
 
-	public *getTreeOf<T extends typeof Scene>(T: T): Generator<getInstanceOf<T>> {
-		for(const i of this.tree(true)) {
-			if(i instanceof T) yield i as getInstanceOf<T>;
+	public *chein_parents(): Generator<Scene> {
+		let w: Scene | null = this;
+		while(w = w._parent) yield w;
+	}
+
+	public *children(r: boolean = false): Generator<Scene> {
+		if(!r) {
+			for(let i = 0; i < this._children.length; i++) yield this._children[i];
+		} else {
+			for(const s of this.children()) {
+				yield s;
+				yield* s.children(true);
+			}
+		}
+	}
+
+	public *getChildrenOf<T extends typeof Scene>(T: T, r: boolean = true): Generator<InstanceType<T>> {
+		for(const i of this.children(r)) {
+			if(i instanceof T) yield i as InstanceType<T>;
+		}
+	}
+
+	public *getChainParentsOf<T extends typeof Scene>(T: T): Generator<InstanceType<T>> {
+		for(const i of this.chein_parents()) {
+			if(i instanceof T) yield i as InstanceType<T>;
+		}
+	}
+
+	public getRootOf<T extends typeof Scene>(T: T): InstanceType<T> {
+		let root: InstanceType<T> = this as InstanceType<T>;
+
+		for(const i of this.chein_parents()) {
+			if(i instanceof T) root = i as InstanceType<T>;
+		}
+
+		return root;
+	}
+
+
+	public static *TREE(r: boolean = false): Generator<typeof Scene> {
+		if(!r) {
+			for(const name in this._TREE) yield this._TREE[name];
+		} else {
+			for(const s of this.TREE()) {
+				yield s;
+				yield* s.TREE(true);
+			}
 		}
 	}
 }

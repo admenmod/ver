@@ -182,4 +182,5 @@ export class List<T> {
 
 
 	public static readonly NULL = null;
+	public static readonly ZERO = null;
 }

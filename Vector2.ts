@@ -1,19 +1,21 @@
 export type Vector2_t = Vector2 | number[] | { 0: number, 1: number };
 
 
-const isVector2_t = (v: any): v is Vector2_t => v[0] !== null && v[0] !== undefined && v[1] !== null && v[1] !== undefined;
-
-
 export class Vector2 {
 	public '0': number = 0;
 	public '1': number = 0;
-	public readonly length: number = 2;
+	declare public readonly length: number;
 
 
 	constructor();
 	constructor(v: Vector2_t);
 	constructor(x: number, y: number);
 	constructor(...args: any[]) {
+		Object.defineProperty(this, 'length', {
+			value: 2,
+			writable: false, enumerable: false, configurable: true
+		});
+
 		if(args.length === 1) {
 			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) (this as any)[i] = args[0][i]; }
 			else { for(let i = 0; i < this.length; ++i) (this as any)[i] = args[0]; }

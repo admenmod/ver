@@ -22,19 +22,19 @@ export class EventListener<This = any, Args extends any[] = any[]> {
 
 
 export declare namespace Event {
-	export type event_name<T extends string = string> = `@${T}`;
+	export type name<T extends string = string> = `@${T}`;
 
 	export type KeysOf<T extends object> = ({
-		[K in keyof T]: K extends event_name ? T[K] extends Event ? K : never : never
+		[K in keyof T]: K extends name ? T[K] extends Event ? K : never : never
 	})[keyof T];
 
 	export type getArgs<T extends object, K extends KeysOf<T>> =
 		T[K] extends Event<any, infer A> ? A : never;
 
-	export type ConvertDel<U extends event_name> = U extends event_name<infer R> ? R : never;
-	export type ConvertAdd<U extends string> = event_name<U>;
+	export type ConvertDel<U extends name> = U extends name<infer R> ? R : never;
+	export type ConvertAdd<U extends string> = name<U>;
 
-	export type ArgsEvent<T extends object, Type extends ConvertDel<KeysOf<T>>> =
+	export type Args<T extends object, Type extends ConvertDel<KeysOf<T>>> =
 		getArgs<T, ConvertAdd<Type> extends KeysOf<T> ? ConvertAdd<Type> : never>;
 }
 
@@ -145,8 +145,8 @@ export class EventDispatcher {
 	public static on<This extends typeof EventDispatcher,
 		Type extends Event.ConvertDel<Event.KeysOf<This>>,
 		//@ts-ignore
-		ThisFn extends This[Event.event_name<Type>]['_this'],
-		Args extends Event.ArgsEvent<This, Type>
+		ThisFn extends This[Event.name<Type>]['_this'],
+		Args extends Event.Args<This, Type>
 	>(this: This, type: Type, fn: Fn<ThisFn, Args>, priority: number = 0, once = false, shift = false): void {
 		//@ts-ignore
 		return this[`@${type}`].on(fn, priority, once, shift);
@@ -155,8 +155,8 @@ export class EventDispatcher {
 	public static once<This extends typeof EventDispatcher,
 		Type extends Event.ConvertDel<Event.KeysOf<This>>,
 		//@ts-ignore
-		ThisFn extends This[Event.event_name<Type>]['_this'],
-		Args extends Event.ArgsEvent<This, Type>
+		ThisFn extends This[Event.name<Type>]['_this'],
+		Args extends Event.Args<This, Type>
 	>(this: This, type: Type, fn: Fn<ThisFn, Args>, priority: number = 0): void {
 		//@ts-ignore
 		return this[`@${type}`].once(fn, priority);
@@ -165,8 +165,8 @@ export class EventDispatcher {
 	public static off<This extends typeof EventDispatcher,
 		Type extends Event.ConvertDel<Event.KeysOf<This>>,
 		//@ts-ignore
-		ThisFn extends This[Event.event_name<Type>]['_this'],
-		Args extends Event.ArgsEvent<This, Type>
+		ThisFn extends This[Event.name<Type>]['_this'],
+		Args extends Event.Args<This, Type>
 	>(this: This, type: Type, fn?: Fn<ThisFn, Args>): void {
 		//@ts-ignore
 		return this[`@${type}`].off(fn);
@@ -174,7 +174,7 @@ export class EventDispatcher {
 
 	public static emit<This extends typeof EventDispatcher,
 		Type extends Event.ConvertDel<Event.KeysOf<This>>,
-		Args extends Event.ArgsEvent<This, Type>
+		Args extends Event.Args<This, Type>
 	>(this: This, type: Type, ...args: Args): void {
 		//@ts-ignore
 		return this[`@${type}`].emit(...args);
@@ -184,8 +184,8 @@ export class EventDispatcher {
 	public on<This extends EventDispatcher,
 		Type extends Event.ConvertDel<Event.KeysOf<This>>,
 		//@ts-ignore
-		ThisFn extends This[Event.event_name<Type>]['_this'],
-		Args extends Event.ArgsEvent<This, Type>
+		ThisFn extends This[Event.name<Type>]['_this'],
+		Args extends Event.Args<This, Type>
 	>(this: This, type: Type, fn: Fn<ThisFn, Args>, priority: number = 0, once = false, shift = false): void {
 		//@ts-ignore
 		return this[`@${type}`].on(fn, priority, once, shift);
@@ -194,8 +194,8 @@ export class EventDispatcher {
 	public once<This extends EventDispatcher,
 		Type extends Event.ConvertDel<Event.KeysOf<This>>,
 		//@ts-ignore
-		ThisFn extends This[Event.event_name<Type>]['_this'],
-		Args extends Event.ArgsEvent<This, Type>
+		ThisFn extends This[Event.name<Type>]['_this'],
+		Args extends Event.Args<This, Type>
 	>(this: This, type: Type, fn: Fn<ThisFn, Args>, priority: number = 0): void {
 		//@ts-ignore
 		return this[`@${type}`].once(fn, priority);
@@ -204,8 +204,8 @@ export class EventDispatcher {
 	public off<This extends EventDispatcher,
 		Type extends Event.ConvertDel<Event.KeysOf<This>>,
 		//@ts-ignore
-		ThisFn extends This[Event.event_name<Type>]['_this'],
-		Args extends Event.ArgsEvent<This, Type>
+		ThisFn extends This[Event.name<Type>]['_this'],
+		Args extends Event.Args<This, Type>
 	>(this: This, type: Type, fn?: Fn<ThisFn, Args>): void {
 		//@ts-ignore
 		return this[`@${type}`].off(fn);
@@ -213,7 +213,7 @@ export class EventDispatcher {
 
 	public emit<This extends EventDispatcher,
 		Type extends Event.ConvertDel<Event.KeysOf<This>>,
-		Args extends Event.ArgsEvent<This, Type>
+		Args extends Event.Args<This, Type>
 	>(this: This, type: Type, ...args: Args): void {
 		//@ts-ignore
 		return this[`@${type}`].emit(...args);

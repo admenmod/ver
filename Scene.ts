@@ -175,10 +175,13 @@ export class Scene extends EventDispatcher {
 	public TREE(): Record<string, typeof Scene> { return {}; }
 	protected static _TREE: Record<string, typeof Scene>;
 
+
+	public get SCENE_TYPE() { return this.constructor.name; }
+
 	constructor() {
 		super();
 
-		if(!this.isLoaded) throw new Error(`(${this.name}) you can't instantiate a scene before it's loaded`);
+		if(!this.isLoaded) throw new Error(`(${this.SCENE_TYPE}) you can't instantiate a scene before it's loaded`);
 	}
 
 	private __init_tree(): void {

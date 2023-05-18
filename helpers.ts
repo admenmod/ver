@@ -1,6 +1,7 @@
 import { Vector2 } from './Vector2';
 
 
+export const hasOwnProperty = Object.prototype.hasOwnProperty;
 export const random = (a: number, b: number): number => Math.floor(Math.random()*(1+b-a)+a);
 export const JSONcopy = <T extends object = object>(data: T): T => JSON.parse(JSON.stringify(data));
 
@@ -11,14 +12,51 @@ export const roundLoop = (value: number, min: number, max: number) => {
 };
 
 
+export function* prototype_chain(o: any, to: any = null, incl: boolean = true): Generator<any> {
+	let p = o;
+	if(incl) while(p !== to && (p = Object.getPrototypeOf(p))) yield p;
+	else while(p = Object.getPrototypeOf(p)) {
+		if(p === to) break;
+		yield p;
+	}
+}
+
+export function* constructor_chain(o: any, to: any = null, incl: boolean = true): Generator<any> {
+	if(!o.constructor) return;
+
+	for(const c of prototype_chain(o, to.prototype, incl)) {
+		hasOwnProperty.call(c, 'constructor') ? yield c.constructor : null;
+	}
+}
+
+
 export type namespace = Record<PropertyKey, any>;
-export const NameSpace = function(namespace: namespace | null = null): namespace {
+export interface NameSpace {
+	new (): namespace;
+	new (namespace: namespace): namespace;
+	(): namespace;
+	(namespace: namespace): namespace;
+
+	hasOwn: (o: any, k: PropertyKey) => boolean;
+	getOwn: (o: any, k: PropertyKey) => any;
+}
+//@ts-ignore
+export const NameSpace: NameSpace = function(namespace: namespace | null = null): namespace {
 	return Object.create(namespace);
 }
 
+Object.defineProperty(NameSpace, 'hasOwn', {
+	enumerable: true, configurable: true,
+	value: (o: any, k: PropertyKey): any => hasOwnProperty.call(o, k)
+});
+
+Object.defineProperty(NameSpace, 'getOwn', {
+	enumerable: true, configurable: true,
+	value: (o: any, k: PropertyKey): any => hasOwnProperty.call(o, k) ? o[k] : void 0
+});
+
 Object.defineProperty(NameSpace, Symbol.hasInstance, {
 	configurable: true,
-	//@ts-ignore
 	value: (o: namespace) => !(o instanceof Object)
 });
 

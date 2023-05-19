@@ -1,11 +1,19 @@
 import { Vector2 } from './Vector2';
+import { Event, EventDispatcher } from './events';
 
 
-export class TouchesController {
+export class TouchesController extends EventDispatcher {
 	public active: number[] = [];
 	public touches: Touch[] = [];
 
+	public '@touchstart' = new Event<TouchesController, [touches: TouchesController, e: TouchEvent]>(this);
+	public '@touchend' = new Event<TouchesController, [touches: TouchesController, e: TouchEvent]>(this);
+	public '@touchmove' = new Event<TouchesController, [touches: TouchesController, e: TouchEvent]>(this);
+
+
 	constructor(el: HTMLElement, filter = (e: TouchEvent) => true) {
+		super();
+
 		el.addEventListener('touchstart', e => {
 			if(!filter(e)) return;
 
@@ -23,11 +31,16 @@ export class TouchesController {
 				tTouch.fD = true;
 				tTouch.fP = true;
 
-				tTouch.bx = tTouch.x = eTouch.clientX;
-				tTouch.by = tTouch.y = eTouch.clientY;
+				tTouch.b.x = tTouch.x = eTouch.clientX;
+				tTouch.b.y = tTouch.y = eTouch.clientY;
 
+				tTouch.isActive = true;
 				this.active.push(id);
-			};
+
+				tTouch['@start'].emit(tTouch, eTouch);
+			}
+
+			this['@touchstart'].emit(this, e);
 		}, { passive: true });
 
 		el.addEventListener('touchend', e => {
@@ -48,8 +61,13 @@ export class TouchesController {
 				tTouch.down = false;
 				tTouch.downTime = 0;
 
+				tTouch.isActive = false;
 				this.active.splice(k, 1);
-			};
+
+				tTouch['@end'].emit(tTouch);
+			}
+
+			this['@touchend'].emit(this, e);
 		}, { passive: true });
 
 		el.addEventListener('touchmove', e => {
@@ -68,38 +86,60 @@ export class TouchesController {
 					tTouch.down = false;
 					tTouch.downTime = 0;
 
-					tTouch.sx = tTouch.x-tTouch.px;
-					tTouch.sy = tTouch.y-tTouch.py;
-					tTouch.px = tTouch.x;
-					tTouch.py = tTouch.y;
-				};
-			};
+					tTouch.s.x = tTouch.x-tTouch.p.x;
+					tTouch.s.y = tTouch.y-tTouch.p.y;
+					tTouch.p.x = tTouch.x;
+					tTouch.p.y = tTouch.y;
+
+					tTouch['@move'].emit(tTouch, eTouch);
+				}
+			}
+
+			this['@touchmove'].emit(this, e);
 		}, { passive: true });
 	}
 
-	isDown() { return this.touches.some(i => i.isDown()); }
-	isPress() { return this.touches.some(i => i.isPress()); }
-	isUp() { return this.touches.some(i => i.isUp()); }
-	isMove() { return this.touches.some(i => i.isMove()); }
-	isTimeDown(time: number) { return this.touches.some(i => i.isTimeDown(time)); }
+	public isDown() { return this.touches.some(i => i.isDown()); }
+	public isPress() { return this.touches.some(i => i.isPress()); }
+	public isUp() { return this.touches.some(i => i.isUp()); }
+	public isMove() { return this.touches.some(i => i.isMove()); }
+	public isTimeDown(time: number) { return this.touches.some(i => i.isTimeDown(time)); }
 
-	findTouch(cb = (touch: Touch) => true) { return this.touches.find(t => t.isPress() && cb(t)) || null; }
-	isStaticRectIntersect(a: Parameters<typeof Touch.prototype.isStaticRectIntersect>[0]) {
-		return this.touches.some(i => i.isStaticRectIntersect(a));
+	public findTouch(cb = (touch: Touch) => true) { return this.touches.find(t => t.isPress() && cb(t)) || null; }
+	public nullify(dt: number) { for(let i = 0; i < this.touches.length; i++) this.touches[i].nullify(dt); }
+
+
+	public destroy() {
+		for(let i = 0; i < this.touches.length; i++) this.touches[i].destroy();
+		this.events_off(true);
 	}
-	nullify(dt: number) { for(let i = 0; i < this.touches.length; i++) this.touches[i].nullify(dt); }
 }
 
 
-export class Touch extends Vector2 {
+export class Touch extends EventDispatcher {
 	public id: number;
+	public isActive: boolean = false;
 
-	public sx = 0;
-	public sy = 0; // speed
-	public px = 0;
-	public py = 0; // fixPrevPosition
-	public bx = 0;
-	public by = 0; // fixStartPosition
+	public '@start' = new Event<Touch, [touch: Touch, eTouch: globalThis.Touch]>(this);
+	public '@end' = new Event<Touch, [touch: Touch]>(this);
+	public '@move' = new Event<Touch, [touch: Touch, eTouch: globalThis.Touch]>(this);
+
+	public pos = new Vector2();
+	public get x() { return this.pos.x; }
+	public set x(v) { this.pos.x = v; }
+	public get y() { return this.pos.y; }
+	public set y(v) { this.pos.y = v; }
+	public get 0() { return this.pos.x; }
+	public set 0(v) { this.pos.x = v; }
+	public get 1() { return this.pos.y; }
+	public set 1(v) { this.pos.y = v; }
+
+	/** speed */
+	public s = new Vector2();
+	/** fix prev position */
+	public p = new Vector2();
+	/** fix start position */
+	public b = new Vector2();
 
 	public fD: boolean = false;
 	public fP: boolean = false;
@@ -117,9 +157,10 @@ export class Touch extends Vector2 {
 		this.id = id;
 	}
 
-	public get speed() { return Math.sqrt(this.sx**2 + this.sy**2); }
-	public get dx() { return this.x-this.bx; }
-	public get dy() { return this.y-this.by; }
+	public get speed() { return this.s.module; }
+	public get d() { return this.pos.buf().sub(this.b); }
+	public get dx() { return this.pos.x-this.b.x; }
+	public get dy() { return this.pos.y-this.b.y; }
 	public get beeline() { return Math.sqrt(this.dx**2 + this.dy**2); }
 
 	public isDown() { return this.fD; }
@@ -132,12 +173,17 @@ export class Touch extends Vector2 {
 			this.down = false;
 			this.downTime = 0;
 			return true;
-		};
+		}
 		return false;
 	}
 
 	public nullify(dt: number) {
 		this.fP = this.fU = this.fC = this.fM = this.fdbC = false;
 		if(this.down) this.downTime += dt;
+	}
+
+
+	public destroy() {
+		this.events_off(true);
 	}
 }

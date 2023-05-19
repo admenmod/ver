@@ -10,18 +10,19 @@ export class Camera extends EventDispatcher {
 	public get rotation(): number { return this._rotation; }
 	public set rotation(v: number) { this._rotation = v; }
 
-	constructor(
-		public readonly size: Vector2,
-		public pixelDensity: number = 20
-	) {
+	constructor(public readonly size: Vector2) {
 		super();
 	}
 
-	public getDrawPosition(): Vector2 {
-		return this.position.buf()
-			.inc(this.scale)
-			.inc(this.pixelDensity)
-			.sub(this.size.buf().div(2));
+	public use(ctx: CanvasRenderingContext2D): CanvasRenderingContext2D {
+		ctx.scale(this.scale.x, this.scale.y);
+		ctx.translate(-(this.position.x - this.size.x/2/this.scale.x), -(this.position.y - this.size.y/2/this.scale.y));
+
+		ctx.translate(this.position.x, this.position.y);
+		ctx.rotate(-this.rotation);
+		ctx.translate(-this.position.x, -this.position.y);
+
+		return ctx;
 	}
 
 	public get vw() { return this.size.x / 100; }

@@ -147,7 +147,7 @@ export class Scene extends EventDispatcher {
 	protected _parent: Scene | null = null;
 	protected get parent() { return this._parent; }
 
-	protected _children!: Scene[];
+	protected _children: Scene[] = [];
 
 	private _owner: Scene | null = null;
 	public get owner() { return this._owner; }
@@ -173,8 +173,11 @@ export class Scene extends EventDispatcher {
 	public get isEmbedded() { return this._isEmbedded; }
 
 	public TREE(): Record<string, typeof Scene> { return {}; }
-	protected static _TREE: Record<string, typeof Scene>;
-
+	private static __TREE: Record<string, typeof Scene>;
+	protected static get _TREE(): typeof Scene['__TREE'] {
+		return Object.prototype.hasOwnProperty.call(this, '__TREE') ? this.__TREE : void 0 as any;
+	}
+	protected static set _TREE(v) { this.__TREE = v!; }
 
 	public get SCENE_TYPE() { return this.constructor.name; }
 
@@ -186,9 +189,7 @@ export class Scene extends EventDispatcher {
 
 	private __init_tree(): void {
 		if(!this.isLoaded) throw new Error(`(${this.name}) you can't instantiate a scene before it's loaded`);
-		if(this._children) return;
-
-		this._children = [];
+		if(this._children.length) return;
 
 		for(const name in (this.constructor as typeof Scene)._TREE) {
 			const Class = (this.constructor as typeof Scene)._TREE[name];
@@ -234,8 +235,9 @@ export class Scene extends EventDispatcher {
 
 		scene._parent = this;
 
-		for(const s of this.children(true)) s['@tree_entered'].emit(this);
-		for(const p of this.chein_parents()) p['@child_entered_tree'].emit(scene);
+		scene['@tree_entered'].emit(this);
+		for(const s of scene.children(true)) s['@tree_entered'].emit(this);
+		for(const p of scene.chein_parents()) p['@child_entered_tree'].emit(scene);
 
 		return scene;
 	}
@@ -250,14 +252,16 @@ export class Scene extends EventDispatcher {
 
 		const l = this._children.indexOf(scene);
 
-		for(const s of this.children(true)) s['@tree_exiting'].emit(this);
-		for(const p of this.chein_parents()) p['@child_exiting_tree'].emit(scene);
+		scene['@tree_exiting'].emit(this);
+		for(const s of scene.children(true)) s['@tree_exiting'].emit(this);
+		for(const p of scene.chein_parents()) p['@child_exiting_tree'].emit(scene);
 
 		scene._parent = null;
 		this._children.splice(l, 1);
 
-		for(const s of this.children(true)) s['@tree_exited'].emit(this);
-		for(const p of this.chein_parents()) p['@child_exited_tree'].emit(scene);
+		scene['@tree_exited'].emit(this);
+		for(const s of scene.children(true)) s['@tree_exited'].emit(this);
+		for(const p of scene.chein_parents()) p['@child_exited_tree'].emit(scene);
 
 		return scene;
 	}

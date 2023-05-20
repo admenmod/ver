@@ -45,7 +45,7 @@ export class System<Item extends typeof Scene> extends EventDispatcher {
 			this['@removing'].emit(item);
 
 			const l = this._items.indexOf(item);
-			if(~l) return;
+			if(!~l) return;
 			this._items.splice(l, 1);
 
 			this['@removed'].emit(item);
@@ -74,10 +74,12 @@ export class System<Item extends typeof Scene> extends EventDispatcher {
 	}
 
 
-	protected _child_entered_tree(child: Scene): void { this.add(child); }
-	protected _child_exiting_tree(child: Scene): void { this.remove(child); }
+	protected _child_entered_tree = (child: Scene) => this.add(child);
+	protected _child_exiting_tree = (child: Scene) => this.remove(child);
 
 	public watch(o: Scene): void {
+		if(this._observed.includes(o)) return;
+
 		o.on('child_entered_tree', this._child_entered_tree);
 		o.on('child_exiting_tree', this._child_exiting_tree);
 
@@ -87,6 +89,8 @@ export class System<Item extends typeof Scene> extends EventDispatcher {
 	}
 
 	public unwatch(o: Scene): void {
+		if(!this._observed.includes(o)) return;
+
 		this['@unwatching'].emit(o);
 
 		const l = this._observed.indexOf(o);

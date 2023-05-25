@@ -1,8 +1,7 @@
 import { Event } from './events';
 import { Vector2 } from './Vector2';
 
-export type CanvasList = Record<string, HTMLCanvasElement>;
-export type LayersList = Record<string, CanvasRenderingContext2D>;
+type CanvasList = Record<string, HTMLCanvasElement>;
 
 
 const resize = Symbol('resize');

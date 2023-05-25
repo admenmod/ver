@@ -6,6 +6,52 @@ declare namespace Fn {
 }
 
 
+export const EventAsFunction = <This, Args extends any[]>(_this: This) => {
+	const listeners: EventListener<This, Args>[] = [];
+
+	type fn = Fn<This, Args>;
+
+	interface event {
+		(...args: Args): void;
+		on(fn: fn, priority?: number, once?: boolean, shift?: boolean): void;
+		once(fn: fn, priority?: number, once?: boolean, shift?: boolean): void;
+		off(fn?: fn): void;
+	}
+
+	const event: event = (...args: Args): void => {
+		for(let i = 0; i < listeners.length; ++i) {
+			const l = listeners[i];
+			l.fn.apply(l.ctx, args);
+			if(l.once) event.off(l.fn);
+		}
+	};
+
+	event.on = (fn: fn, priority: number = 0, once = false, shift = false): void => {
+		const listener = new EventListener(fn, _this, priority, once) as EventListener;
+
+		if(!shift) listeners.push(listener);
+		else listeners.unshift(listener);
+
+		listeners.sort((a, b) => a.zindex - b.zindex);
+	}
+
+	event.once = (fn: fn, priority: number = 0, once = true, shift = false): void => {
+		event.on(fn, priority, once, shift);
+	}
+
+	event.off = (fn?: fn) => {
+		if(fn) {
+			const i: number = listeners.findIndex(l => l.fn === fn);
+			if(~i) return;
+			listeners.splice(i, 1);
+		}
+		else listeners.length = 0;
+	};
+
+	return event;
+};
+
+
 export class EventListener<This = any, Args extends any[] = any[]> {
 	public fn: Fn<This, Args>;
 	public ctx: This;
@@ -44,17 +90,19 @@ export class Event<This = any, Args extends any[] = any[]> {
 
 	constructor(_this: This) { this._this = _this; }
 
-	public on<T extends This>(fn: Fn<T, Args>, priority: number = 0, once = false, shift = false): void {
+	public on<T extends This>(fn: Fn<T, Args>, priority: number = 0, once = false, shift = false): typeof fn {
 		const listener = new EventListener(fn, this._this as any, priority, once) as EventListener;
 
 		if(!shift) this._listeners.push(listener);
 		else this._listeners.unshift(listener);
 
 		this._listeners.sort((a, b) => a.zindex - b.zindex);
+
+		return fn;
 	}
 
-	public once<T extends This>(fn: Fn<T, Args>, priority: number = 0, once = true, shift = false): void {
-		this.on(fn, priority, once, shift);
+	public once<T extends This>(fn: Fn<T, Args>, priority: number = 0, once = true, shift = false): typeof fn {
+		return this.on(fn, priority, once, shift);
 	}
 
 	public off<T extends This>(fn?: Fn<T, Args>): void {
@@ -147,7 +195,7 @@ export class EventDispatcher {
 		//@ts-ignore
 		ThisFn extends This[Event.name<Type>]['_this'],
 		Args extends Event.Args<This, Type>
-	>(this: This, type: Type, fn: Fn<ThisFn, Args>, priority: number = 0, once = false, shift = false): void {
+	>(this: This, type: Type, fn: Fn<ThisFn, Args>, priority: number = 0, once = false, shift = false): typeof fn {
 		//@ts-ignore
 		return this[`@${type}`].on(fn, priority, once, shift);
 	}
@@ -157,7 +205,7 @@ export class EventDispatcher {
 		//@ts-ignore
 		ThisFn extends This[Event.name<Type>]['_this'],
 		Args extends Event.Args<This, Type>
-	>(this: This, type: Type, fn: Fn<ThisFn, Args>, priority: number = 0): void {
+	>(this: This, type: Type, fn: Fn<ThisFn, Args>, priority: number = 0): typeof fn {
 		//@ts-ignore
 		return this[`@${type}`].once(fn, priority);
 	}
@@ -186,7 +234,7 @@ export class EventDispatcher {
 		//@ts-ignore
 		ThisFn extends This[Event.name<Type>]['_this'],
 		Args extends Event.Args<This, Type>
-	>(this: This, type: Type, fn: Fn<ThisFn, Args>, priority: number = 0, once = false, shift = false): void {
+	>(this: This, type: Type, fn: Fn<ThisFn, Args>, priority: number = 0, once = false, shift = false): typeof fn {
 		//@ts-ignore
 		return this[`@${type}`].on(fn, priority, once, shift);
 	}
@@ -196,7 +244,7 @@ export class EventDispatcher {
 		//@ts-ignore
 		ThisFn extends This[Event.name<Type>]['_this'],
 		Args extends Event.Args<This, Type>
-	>(this: This, type: Type, fn: Fn<ThisFn, Args>, priority: number = 0): void {
+	>(this: This, type: Type, fn: Fn<ThisFn, Args>, priority: number = 0): typeof fn {
 		//@ts-ignore
 		return this[`@${type}`].once(fn, priority);
 	}

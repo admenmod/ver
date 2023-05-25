@@ -6,13 +6,17 @@ export class TouchesController extends EventDispatcher {
 	public active: number[] = [];
 	public touches: Touch[] = [];
 
-	public '@touchstart' = new Event<TouchesController, [touches: TouchesController, e: TouchEvent]>(this);
-	public '@touchend' = new Event<TouchesController, [touches: TouchesController, e: TouchEvent]>(this);
-	public '@touchmove' = new Event<TouchesController, [touches: TouchesController, e: TouchEvent]>(this);
-
+	public '@touchstart' = new Event<TouchesController, [
+		t: Touch, e: globalThis.Touch, touches: TouchesController, e: TouchEvent]>(this);
+	public '@touchend' = new Event<TouchesController, [
+		t: Touch, touches: TouchesController, e: TouchEvent]>(this);
+	public '@touchmove' = new Event<TouchesController, [
+		t: Touch, e: globalThis.Touch, touches: TouchesController, e: TouchEvent]>(this);
 
 	constructor(el: HTMLElement, filter = (e: TouchEvent) => true) {
 		super();
+
+		const box = el.getBoundingClientRect();
 
 		el.addEventListener('touchstart', e => {
 			if(!filter(e)) return;
@@ -31,16 +35,16 @@ export class TouchesController extends EventDispatcher {
 				tTouch.fD = true;
 				tTouch.fP = true;
 
-				tTouch.b.x = tTouch.x = eTouch.clientX;
-				tTouch.b.y = tTouch.y = eTouch.clientY;
+				tTouch.b.x = tTouch.x = eTouch.pageX - box.left;
+				tTouch.b.y = tTouch.y = eTouch.pageY - box.top;
 
 				tTouch.isActive = true;
 				this.active.push(id);
 
-				tTouch['@start'].emit(tTouch, eTouch);
-			}
+				tTouch['@start'].emit(tTouch, eTouch, this, e);
 
-			this['@touchstart'].emit(this, e);
+				this['@touchstart'].emit(tTouch, eTouch, this, e);
+			}
 		}, { passive: true });
 
 		el.addEventListener('touchend', e => {
@@ -64,10 +68,10 @@ export class TouchesController extends EventDispatcher {
 				tTouch.isActive = false;
 				this.active.splice(k, 1);
 
-				tTouch['@end'].emit(tTouch);
-			}
+				tTouch['@end'].emit(tTouch, this, e);
 
-			this['@touchend'].emit(this, e);
+				this['@touchend'].emit(tTouch, this, e);
+			}
 		}, { passive: true });
 
 		el.addEventListener('touchmove', e => {
@@ -78,9 +82,13 @@ export class TouchesController extends EventDispatcher {
 				let tTouch = this.touches[id];
 				let eTouch = e.touches[i];
 
-				if(tTouch && tTouch.x !== eTouch.clientX && tTouch.y !== eTouch.clientY) {
-					tTouch.x = eTouch.clientX;
-					tTouch.y = eTouch.clientY;
+				const x = eTouch.pageX - box.left;
+				const y = eTouch.pageY - box.top;
+
+				if(tTouch && tTouch.x !== x && tTouch.y !== y) {
+					tTouch.x = x;
+					tTouch.y = y;
+
 
 					tTouch.fM = true;
 					tTouch.down = false;
@@ -91,11 +99,11 @@ export class TouchesController extends EventDispatcher {
 					tTouch.p.x = tTouch.x;
 					tTouch.p.y = tTouch.y;
 
-					tTouch['@move'].emit(tTouch, eTouch);
+					tTouch['@move'].emit(tTouch, eTouch, this, e);
+
+					this['@touchmove'].emit(tTouch, eTouch, this, e);
 				}
 			}
-
-			this['@touchmove'].emit(this, e);
 		}, { passive: true });
 	}
 
@@ -120,9 +128,12 @@ export class Touch extends EventDispatcher {
 	public id: number;
 	public isActive: boolean = false;
 
-	public '@start' = new Event<Touch, [touch: Touch, eTouch: globalThis.Touch]>(this);
-	public '@end' = new Event<Touch, [touch: Touch]>(this);
-	public '@move' = new Event<Touch, [touch: Touch, eTouch: globalThis.Touch]>(this);
+	public '@start' = new Event<Touch, [
+		t: Touch, e: globalThis.Touch, touches: TouchesController, e: TouchEvent]>(this);
+	public '@end' = new Event<Touch, [
+		t: Touch, touches: TouchesController, e: TouchEvent]>(this);
+	public '@move' = new Event<Touch, [
+		t: Touch, e: globalThis.Touch, touches: TouchesController, e: TouchEvent]>(this);
 
 	public pos = new Vector2();
 	public get x() { return this.pos.x; }

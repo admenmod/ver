@@ -5,7 +5,7 @@ export const hasOwnProperty = Object.prototype.hasOwnProperty;
 export const random = (a: number, b: number): number => Math.floor(Math.random()*(1+b-a)+a);
 export const JSONcopy = <T extends object = object>(data: T): T => JSON.parse(JSON.stringify(data));
 
-export const roundLoop = (value: number, min: number, max: number) => {
+export const roundLoop = (value: number, min: number = -Math.PI, max: number = Math.PI) => {
 	const range = max - min;
 	const offset = ((value - min) % range + range) % range;
 	return min + offset;

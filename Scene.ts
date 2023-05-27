@@ -24,25 +24,23 @@ export class Scene extends EventDispatcher {
 	/** @virtual */
 	protected _ready(): void {}
 	/** @virtual */
-	protected async _init(): Promise<void> {
-		await Promise.all([...this.children()].map(i => i.init()));
-	}
+	protected async _init(): Promise<void> {}
 	/** @virtual */
-	protected async _destroy(): Promise<void> {
-		await Promise.all([...this.children()].map(i => i.destroy()));
-	}
+	protected async _destroy(): Promise<void> {}
 
 
-	public ready(): boolean {
+	protected ready(): boolean {
 		if(this._isReady || !this._isInited || !this.isLoaded) return false;
 
-		for(const scene of this.children()) scene.ready();
+		for(const scene of this.tree()) {
+			this.addChild(scene);
+			scene.ready();
+		}
 
 		this._ready();
+		this['@ready'].emit();
 
 		this._isReady = true;
-
-		this['@ready'].emit();
 
 		return true;
 	}
@@ -50,15 +48,17 @@ export class Scene extends EventDispatcher {
 	public async init(): Promise<boolean> {
 		if(this._isInited || !this.isLoaded) return false;
 
-		this.__init_tree();
+		this.__generate_tree();
 
 		await this._init();
 		this['@init'].emit();
 
+		await Promise.all([...this.tree()].map(s => s.init()));
+
 		this._isInited = true;
 		this._isDestroyed = false;
 
-		if(this.isRoot) this.ready();
+		if(this._owner === null) this.ready();
 
 		return true;
 	}
@@ -69,6 +69,7 @@ export class Scene extends EventDispatcher {
 		this['@destroy'].emit();
 		await this._destroy();
 
+		await Promise.all([...this.children()].map(s => s.destroy()));
 		this._children.length = 0;
 
 		this._isDestroyed = true;
@@ -145,7 +146,7 @@ export class Scene extends EventDispatcher {
 
 
 	protected _parent: Scene | null = null;
-	protected get parent() { return this._parent; }
+	public get parent() { return this._parent; }
 
 	protected _children: Scene[] = [];
 
@@ -172,6 +173,8 @@ export class Scene extends EventDispatcher {
 	private _isEmbedded: boolean = false;
 	public get isEmbedded() { return this._isEmbedded; }
 
+	protected _tree!: Record<string, Scene>;
+
 	public TREE(): Record<string, typeof Scene> { return {}; }
 	private static __TREE: Record<string, typeof Scene>;
 	protected static get _TREE(): typeof Scene['__TREE'] {
@@ -187,9 +190,9 @@ export class Scene extends EventDispatcher {
 		if(!this.isLoaded) throw new Error(`(${this.SCENE_TYPE}) you can't instantiate a scene before it's loaded`);
 	}
 
-	private __init_tree(): void {
+	private __generate_tree(): void {
 		if(!this.isLoaded) throw new Error(`(${this.name}) you can't instantiate a scene before it's loaded`);
-		if(this._children.length) return;
+		if(!this._tree) this._tree = Object.create(null);
 
 		for(const name in (this.constructor as typeof Scene)._TREE) {
 			const Class = (this.constructor as typeof Scene)._TREE[name];
@@ -197,15 +200,17 @@ export class Scene extends EventDispatcher {
 
 			const scene = new Class();
 			scene._owner = this;
-			scene._parent = this;
 			scene._isEmbedded = true;
 			scene._name = name;
-
-			this._children.push(scene);
+			this._tree[scene._name] = scene;
 		}
 	}
 
 
+	public get<Name extends keyof getTree<this>>(name: Name): getTree<this>[Name] {
+		//@ts-ignore
+		return this._tree[name];
+	}
 	public getChild<Name extends keyof getTree<this>>(name: Name): getTree<this>[Name] | null;
 	public getChild(name: string): Scene | null;
 	public getChild(name: string): Scene | null {
@@ -248,7 +253,7 @@ export class Scene extends EventDispatcher {
 		const scene = this._children.find(i => i.name === name);
 
 		if(!scene) throw new Error(`(${name}) no scene with that name`);
-		if(t || scene._isEmbedded) throw new Error(`(${name}) this scene is embedded`);
+		if(!t && scene._isEmbedded) throw new Error(`(${name}) this scene is embedded`);
 
 		const l = this._children.indexOf(scene);
 
@@ -314,6 +319,17 @@ export class Scene extends EventDispatcher {
 	public *chein_parents(): Generator<Scene> {
 		let w: Scene | null = this;
 		while(w = w._parent) yield w;
+	}
+
+	public *tree(r: boolean = false): Generator<Scene> {
+		if(!r) {
+			for(const id in this._tree) yield this._tree[id];
+		} else {
+			for(const s of this.children()) {
+				yield s;
+				yield* s.children(true);
+			}
+		}
 	}
 
 	public *children(r: boolean = false): Generator<Scene> {

@@ -1,4 +1,7 @@
 declare function codeShell(code: string, env?: object, p?: {
+	arguments?: string[];
+	async?: boolean;
+	generator?: boolean;
 	insulate?: boolean;
 	source?: string;
 }): () => void;

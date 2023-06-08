@@ -6,14 +6,14 @@ type CanvasList = Record<string, HTMLCanvasElement>;
 
 const resize = Symbol('resize');
 
-export class CanvasLayer extends HTMLElement {
-	public '@connectedCallback' = new Event<CanvasLayer, []>(this);
-	public '@disconnectedCallback' = new Event<CanvasLayer, []>(this);
+export class HTMLCanvasLayersElement extends HTMLElement {
+	public '@connectedCallback' = new Event<HTMLCanvasLayersElement, []>(this);
+	public '@disconnectedCallback' = new Event<HTMLCanvasLayersElement, []>(this);
 
-	public '@resize' = new Event<CanvasLayer, [size: Vector2]>(this);
-	public '@create' = new Event<CanvasLayer, [layer: CanvasList[string]]>(this);
-	public '@move' = new Event<CanvasLayer, [layer: CanvasList[string]]>(this);
-	public '@remove' = new Event<CanvasLayer, [layer_id: string]>(this);
+	public '@resize' = new Event<HTMLCanvasLayersElement, [size: Vector2]>(this);
+	public '@create' = new Event<HTMLCanvasLayersElement, [layer: CanvasList[string]]>(this);
+	public '@move' = new Event<HTMLCanvasLayersElement, [layer: CanvasList[string]]>(this);
+	public '@remove' = new Event<HTMLCanvasLayersElement, [layer_id: string]>(this);
 
 	private _pixelScale: number;
 	private _width!: number;
@@ -173,4 +173,4 @@ justify-self: ${this.getAttribute('justify-slot') || 'center'};
 }
 
 
-customElements.define('canvas-layer', CanvasLayer);
+customElements.define('canvas-layers', HTMLCanvasLayersElement);

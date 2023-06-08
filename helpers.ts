@@ -1,6 +1,14 @@
 import { Vector2 } from './Vector2';
 
 
+export type Fn<T = any, A extends any[] = any[], R = any> = (this: T, ...args: A) => R;
+export declare namespace Fn {
+	type T<F extends Fn> = F extends Fn<infer T, any, any> ? T : never;
+	type A<F extends Fn> = F extends Fn<any, infer A, any> ? A : never;
+	type R<F extends Fn> = F extends Fn<any, any, infer R> ? R : never;
+}
+
+
 export const hasOwnProperty = Object.prototype.hasOwnProperty;
 export const random = (a: number, b: number): number => Math.floor(Math.random()*(1+b-a)+a);
 export const JSONcopy = <T extends object = object>(data: T): T => JSON.parse(JSON.stringify(data));
@@ -86,6 +94,7 @@ type cb_t = (ctx: CanvasRenderingContext2D, size: Vector2) => void;
 type loadScript_p_t = {
 	parent?: HTMLElement;
 	async?: boolean;
+	force?: boolean;
 };
 
 type generateImage_t = ((w: number, h: number, cb: cb_t) => Promise<Image>) & {
@@ -112,7 +121,10 @@ export const loadImage = (src: string, w?: number, h?: number): Promise<Image> =
 	el.onerror = e => rej(e);
 });
 
-export const loadScript = (src: string, p: loadScript_p_t = {}): Promise<Event> => new Promise((res, rej) => {
+export const loadScript = (src: string, p: loadScript_p_t = {}): Promise<void> => new Promise((res, rej) => {
+	const url = new URL(src, location.origin).href;
+	if(!p.force && Array.prototype.some.call(document.querySelectorAll('script'), i => i.src === url)) return res();
+
 	const parent: HTMLElement = p.parent || document.querySelector('head')!;
 
 	const script = document.createElement('script');
@@ -122,8 +134,8 @@ export const loadScript = (src: string, p: loadScript_p_t = {}): Promise<Event> 
 
 	parent.append(script);
 
-	script.onload = e => res(e);
+	script.onload = () => res();
 	script.onerror = e => rej(e);
 });
 
-let loader = { loadImage, loadScript, cache: new WeakMap() };
+const loader = { loadImage, loadScript, cache: new WeakMap() };

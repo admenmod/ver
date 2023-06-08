@@ -1,9 +1,4 @@
-type Fn<T = any, A extends any[] = any[], R = any> = (this: T, ...args: A) => R;
-declare namespace Fn {
-	type T<F extends Fn> = F extends Fn<infer T, any, any> ? T : never;
-	type A<F extends Fn> = F extends Fn<any, infer A, any> ? A : never;
-	type R<F extends Fn> = F extends Fn<any, any, infer R> ? R : never;
-}
+import type { Fn } from './helpers';
 
 
 export const EventAsFunction = <This, Args extends any[]>(_this: This) => {
@@ -49,7 +44,7 @@ export const EventAsFunction = <This, Args extends any[]>(_this: This) => {
 	};
 
 	return event;
-};
+}
 
 
 export class EventListener<This = any, Args extends any[] = any[]> {

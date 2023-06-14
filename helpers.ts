@@ -1,6 +1,3 @@
-import { Vector2 } from './Vector2';
-
-
 export type Fn<T = any, A extends any[] = any[], R = any> = (this: T, ...args: A) => R;
 export declare namespace Fn {
 	type T<F extends Fn> = F extends Fn<infer T, any, any> ? T : never;
@@ -10,14 +7,52 @@ export declare namespace Fn {
 
 
 export const hasOwnProperty = Object.prototype.hasOwnProperty;
-export const random = (a: number, b: number): number => Math.floor(Math.random()*(1+b-a)+a);
 export const JSONcopy = <T extends object = object>(data: T): T => JSON.parse(JSON.stringify(data));
 
-export const roundLoop = (value: number, min: number = -Math.PI, max: number = Math.PI) => {
+
+interface IMath extends Math {
+	INF: number;
+	TAU: number;
+	degress(x: number): number;
+	radians(x: number): number;
+	randomInt(a: number, b: number): number;
+	randomFloat(a: number, b: number): number;
+	mod(x: number, min?: number, max?: number): number;
+	clamped(min: number, x: number, max: number): number;
+}
+
+export const math: Readonly<IMath> = Object.create(null);
+
+for(const id of Object.getOwnPropertyNames(Math)) (math as any)[id] = (Math as any)[id];
+
+(math as IMath).INF = Infinity;
+(math as IMath).TAU = math.PI*2;
+
+(math as IMath).degress = (x: number) => 180 / math.PI * x;
+(math as IMath).radians = (x: number) => math.PI / 180 * x;
+
+(math as IMath).randomInt = (a: number, b: number): number => math.floor(math.random() * (1+b - a) + a);
+(math as IMath).randomFloat = (a: number, b: number): number => math.random() * (b - a) + a;
+
+(math as IMath).mod = (x: number, min: number = -math.PI, max: number = math.PI) => {
 	const range = max - min;
-	const offset = ((value - min) % range + range) % range;
+	const offset = ((x - min) % range + range) % range;
 	return min + offset;
 };
+
+(math as IMath).clamped = (min: number, x: number, max: number): number => x < min ? min : x > max ? max : x;
+
+Object.freeze(math);
+
+
+export function delay<F extends Fn>(this: Fn.T<F>, cb: F, time: number = 0, ...args: Fn.A<F>) {
+	return new Promise<Fn.R<F>>(res => {
+		const t = setTimeout(() => {
+			clearTimeout(t);
+			res(cb.call(this, ...args));
+		}, time);
+	});
+}
 
 
 export function* prototype_chain(o: any, to: any = null, incl: boolean = true): Generator<any> {
@@ -89,13 +124,7 @@ export const SymbolSpace: SymbolSpace = function(symbolspace: any = null) {
 
 type Image = HTMLImageElement;
 
-type cb_t = (ctx: CanvasRenderingContext2D, size: Vector2) => void;
-
-type loadScript_p_t = {
-	parent?: HTMLElement;
-	async?: boolean;
-	force?: boolean;
-};
+type cb_t = (ctx: CanvasRenderingContext2D, w: number, h: number) => void;
 
 type generateImage_t = ((w: number, h: number, cb: cb_t) => Promise<Image>) & {
 	canvas?: HTMLCanvasElement;
@@ -106,7 +135,7 @@ export const generateImage: generateImage_t = (w, h, cb) => new Promise((res, re
 	const ctx: CanvasRenderingContext2D = cvs.getContext('2d')!;
 	cvs.width = w; cvs.height = h;
 
-	cb(ctx, new Vector2(w, h));
+	cb(ctx, w, h);
 
 	let img = new Image(w, h);
 	img.src = cvs.toDataURL();
@@ -121,7 +150,11 @@ export const loadImage = (src: string, w?: number, h?: number): Promise<Image> =
 	el.onerror = e => rej(e);
 });
 
-export const loadScript = (src: string, p: loadScript_p_t = {}): Promise<void> => new Promise((res, rej) => {
+export const loadScript = (src: string, p: {
+	parent?: HTMLElement;
+	async?: boolean;
+	force?: boolean;
+} = {}): Promise<void> => new Promise((res, rej) => {
 	const url = new URL(src, location.origin).href;
 	if(!p.force && Array.prototype.some.call(document.querySelectorAll('script'), i => i.src === url)) return res();
 

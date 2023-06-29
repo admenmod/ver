@@ -35,14 +35,14 @@ export class MainLoop extends EventDispatcher {
 			if(!this.isEnabled) {
 				this.emit('stop');
 				return;
-			};
+			}
 
 			this.dt = currentTime - this.prevTime;
 
 			if(this.dt > this.mindt) {
 				if(this.dt < this.maxDiff) this['@update'].emit(this.dt);
 				this.prevTime = currentTime;
-			};
+			}
 
 			requestAnimationFrame(_update);
 		};
@@ -61,4 +61,4 @@ export class MainLoop extends EventDispatcher {
 	public destroy(): void {
 		this.events_off(true);
 	}
-};
+}

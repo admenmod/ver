@@ -3,6 +3,10 @@ import { Event, EventDispatcher } from './events';
 
 type Iter = Generator<number, void, number>;
 
+export declare namespace Animation {
+	export type Iterator = Iter;
+	export type Generator = (this: Animation) => Iter;
+}
 export class Animation extends EventDispatcher {
 	public static readonly MIN_TIME: number = 10;
 
@@ -20,12 +24,12 @@ export class Animation extends EventDispatcher {
 	public get isPlayed() { return this._isPlaying; }
 	public get isPaused() { return !this._isPlaying; }
 
-	declare public [Symbol.iterator]: Iter;
+	declare public [Symbol.iterator]: Animation.Iterator;
 	public get iterator() { return this[Symbol.iterator]; }
 	public set iterator(v) { this[Symbol.iterator] = v; }
 
 	constructor(
-		public generator: (this: Animation) => Iter,
+		public generator: Animation.Generator,
 		public looped: boolean = false,
 		public isTimeSync: boolean = false,
 		public readonly MIN_TIME: number = Animation.MIN_TIME
@@ -43,7 +47,9 @@ export class Animation extends EventDispatcher {
 	public pause(): void { this._isPlaying = false; }
 	public toggle(a: boolean = false): void { this._isPlaying ? this.pause() : this.play(a); }
 
-	public reset(): void {
+	public reset(generator?: Animation.Generator): void {
+		if(generator) this.generator = generator;
+
 		this.iterator?.return(void 0);
 		this.iterator = this.generator.call(this);
 

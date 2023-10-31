@@ -94,7 +94,7 @@ export class System<Item extends typeof Scene> extends EventDispatcher {
 		this['@unwatching'].emit(o);
 
 		const l = this._observed.indexOf(o);
-		if(~l) return;
+		if(!~l) return;
 
 		o.off('child_entered_tree', this._child_entered_tree);
 		o.off('child_exiting_tree', this._child_exiting_tree);

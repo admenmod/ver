@@ -13,7 +13,7 @@ export class Path extends String {
 		return String.prototype.startsWith.call(src, './') || String.prototype.startsWith.call(src, '../');
 	}
 	public static isDefault(src: Path): boolean {
-		return !this.isAbsolute(src) || !this.isRelative(src);
+		return !(this.isAbsolute(src) || this.isRelative(src));
 	}
 	public static isPassive = this.isDefault;
 

@@ -14,6 +14,7 @@ export const EventAsFunction = <This, Args extends any[]>(_this: This) => {
 		on(fn: fn, priority?: number, once?: boolean, shift?: boolean): void;
 		once(fn: fn, priority?: number, once?: boolean, shift?: boolean): void;
 		off(fn?: fn): void;
+		[Symbol.iterator](): Generator<EventListener<This, Args>, void, never>
 	}
 
 	const event: event = (...args: Args): void => {
@@ -31,11 +32,11 @@ export const EventAsFunction = <This, Args extends any[]>(_this: This) => {
 		else listeners.unshift(listener);
 
 		listeners.sort(sort);
-	}
+	};
 
 	event.once = (fn: fn, priority: number = 0, once = true, shift = false): void => {
 		event.on(fn, priority, once, shift);
-	}
+	};
 
 	event.off = (fn?: fn) => {
 		if(fn) {
@@ -44,6 +45,10 @@ export const EventAsFunction = <This, Args extends any[]>(_this: This) => {
 			listeners.splice(i, 1);
 		}
 		else listeners.length = 0;
+	};
+
+	event[Symbol.iterator] = function*(): Generator<EventListener<This, Args>, void, never> {
+		for(let i = 0; i < listeners.length; i++) yield listeners[i];
 	};
 
 	return event;
@@ -118,10 +123,8 @@ export class Event<This = any, Args extends any[] = any[]> {
 		}
 	}
 
-	public *[Symbol.iterator]() {
-		for(let i = 0; i < this._listeners.length; i++) {
-			yield this._listeners[i];
-		}
+	public *[Symbol.iterator](): Generator<EventListener<This, Args>, void, never> {
+		for(let i = 0; i < this._listeners.length; i++) yield this._listeners[i];
 	}
 }
 

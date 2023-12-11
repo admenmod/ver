@@ -5,9 +5,24 @@ export declare namespace Fn {
 	type R<F extends Fn> = F extends Fn<any, any, infer R> ? R : never;
 }
 
+export type Primotive = string | number | boolean | bigint;
 
 export const hasOwnProperty = Object.prototype.hasOwnProperty;
 export const JSONcopy = <T extends object = object>(data: T): T => JSON.parse(JSON.stringify(data));
+
+export const regexp = (str: TemplateStringsArray, ...args: any) => {
+	for(let i = 0; i < args.length; i++) (args[i] instanceof RegExp) && (args[i] = args[i].source);
+	return (flags?: string) => RegExp(String.raw(str, ...args), flags);
+};
+
+export const tag = Object.freeze({
+	raw: String.raw,
+	str: (str: TemplateStringsArray, ...args: any[]) => {
+		let r = str[0];
+		for(let i = 0; i < args.length; i++) r += String(args[i])+str[i+1];
+		return r;
+	}
+});
 
 
 interface IMath extends Math {

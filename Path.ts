@@ -40,6 +40,7 @@ export class Path extends String {
 			else normalized.push(i);
 		}
 
+		if(Path.isAbsolute(src) && normalized[0]) normalized.unshift('');
 		if(d && Path.isDirectory(src)) normalized.pop();
 
 		return this.toSource(normalized);
@@ -55,13 +56,14 @@ export class Path extends String {
 
 	public static file(src: Path) {
 		//@ts-ignore
-		const data: { filename: string; name: string; exp: string; dir: string; } = {};
+		const data: { filename: string, name: string, exp: string, dir: string, src: string } = {};
 		const path = this.toArray(src);
 
-		data.filename = path.pop()!;
+		data.filename = path.pop() || '';
 		data.dir = path.length ? this.toSource(path)+'/' : '';
+		data.src = data.dir+data.filename;
 
-		const [name, exp] = data.filename.split(this.fileExp);
+		const [name = '', exp = ''] = data.filename.split(this.fileExp);
 		data.name = name;
 		data.exp = exp;
 

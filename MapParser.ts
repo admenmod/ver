@@ -1,6 +1,6 @@
-import { Vector2 } from './Vector2';
-import { EventDispatcher, Event } from './events';
-import { loadImage } from './helpers';
+import { Vector2 } from './Vector2.js';
+import { EventDispatcher, Event } from './events.js';
+import { loadImage } from './helpers.js';
 
 
 const GObject = Object;

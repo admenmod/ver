@@ -1,4 +1,4 @@
-import { EventDispatcher, Event } from './events';
+import { EventDispatcher, Event } from './events.js';
 
 
 const METAKEYS = {

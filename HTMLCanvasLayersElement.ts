@@ -1,5 +1,5 @@
-import { Event } from './events';
-import { Vector2 } from './Vector2';
+import { Event } from './events.js';
+import { Vector2 } from './Vector2.js';
 
 type CanvasList = Record<string, HTMLCanvasElement>;
 

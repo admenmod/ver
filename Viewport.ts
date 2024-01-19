@@ -1,5 +1,5 @@
-import { Vector2 } from './Vector2';
-import { Event, EventDispatcher } from './events';
+import { Vector2 } from './Vector2.js';
+import { Event, EventDispatcher } from './events.js';
 
 
 export class Viewport extends EventDispatcher {

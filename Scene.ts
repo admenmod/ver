@@ -1,4 +1,4 @@
-import { Event, EventDispatcher } from './events';
+import { Event, EventDispatcher } from './events.js';
 
 
 type getTree<T extends Scene> = { [K in keyof ReturnType<T['TREE']>]: InstanceType<ReturnType<T['TREE']>[K]>; };

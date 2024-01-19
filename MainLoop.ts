@@ -1,4 +1,4 @@
-import { Event, EventDispatcher } from './events';
+import { Event, EventDispatcher } from './events.js';
 
 
 export class MainLoop extends EventDispatcher {
@@ -44,12 +44,14 @@ export class MainLoop extends EventDispatcher {
 				this.prevTime = currentTime;
 			}
 
-			requestAnimationFrame(_update);
+			if(requestAnimationFrame) requestAnimationFrame(_update);
+			else setTimeout(_update, this.mindt, performance.now());
 		};
 
 		this.emit('start');
 
-		requestAnimationFrame(_update);
+		if(requestAnimationFrame) requestAnimationFrame(_update);
+		else setTimeout(_update, this.mindt, performance.now());
 	}
 
 	public stop(): void {

@@ -1,4 +1,4 @@
-import { math as Math } from './helpers';
+import { math as Math } from './helpers.js';
 
 
 export class DataMapTextures<

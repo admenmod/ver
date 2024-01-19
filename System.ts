@@ -1,5 +1,5 @@
-import { Event, EventDispatcher } from './events';
-import { Scene } from './Scene';
+import { Event, EventDispatcher } from './events.js';
+import { Scene } from './Scene.js';
 
 
 export class System<Item extends typeof Scene> extends EventDispatcher {

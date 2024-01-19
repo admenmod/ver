@@ -1,5 +1,5 @@
-import { EventDispatcher, Event } from './events';
-import type { KeyboardInputInterceptor } from './KeyboardInputInterceptor';
+import { EventDispatcher, Event } from './events.js';
+import type { KeyboardInputInterceptor } from './KeyboardInputInterceptor.js';
 
 type mode_t = PropertyKey;
 type mapping_t = string[];

@@ -1,4 +1,4 @@
-import { Event, EventDispatcher } from './events';
+import { Event, EventDispatcher } from './events.js';
 
 
 type Iter = Generator<number, void, number>;

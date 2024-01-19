@@ -1,4 +1,4 @@
-import type { Fn } from './helpers';
+import type { Fn } from './helpers.js';
 
 
 const sort = (a: EventListener, b: EventListener) => a.priority - b.priority;

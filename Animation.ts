@@ -11,6 +11,7 @@ export class Animation extends EventDispatcher {
 	public static readonly MIN_TIME: number = 10;
 
 	public '@play' = new Event<Animation, []>(this);
+	public '@pause' = new Event<Animation, []>(this);
 	public '@done' = new Event<Animation, []>(this);
 	public '@tick' = new Event<Animation, []>(this);
 	public '@reset' = new Event<Animation, []>(this);
@@ -19,6 +20,9 @@ export class Animation extends EventDispatcher {
 
 	protected dt: number = 0;
 	protected time: number = 0;
+
+	protected _numberOfPlayed: number = 0;
+	public get numberOfPlayed() { return this._numberOfPlayed; }
 
 	protected _isPlaying: boolean = false;
 	public get isPlayed() { return this._isPlaying; }
@@ -35,16 +39,26 @@ export class Animation extends EventDispatcher {
 		public readonly MIN_TIME: number = Animation.MIN_TIME
 	) { super(); }
 
-	public play(a: boolean = false): void {
+	public play(a: boolean = false): boolean {
+		if(this._isPlaying) return false;
 		this._isPlaying = true;
 
-		if(a && this.done) {
+		if(!this._numberOfPlayed || a && this.done) {
 			this.reset();
 			this.time = this.iterator.next().value || 0;
-			this['@play'].emit();
 		}
+
+		this['@play'].emit();
+
+		return true;
 	}
-	public pause(): void { this._isPlaying = false; }
+	public pause(): boolean {
+		if(!this._isPlaying) return false;
+		this._isPlaying = false;
+		this['@pause'].emit();
+
+		return true;
+	}
 	public toggle(a: boolean = false): void { this._isPlaying ? this.pause() : this.play(a); }
 
 	public reset(generator?: Animation.Generator): void {
@@ -55,6 +69,8 @@ export class Animation extends EventDispatcher {
 
 		this.dt = 0;
 		this.done = false;
+
+		if(generator) this._numberOfPlayed = 0;
 
 		this['@reset'].emit();
 	}
@@ -71,6 +87,7 @@ export class Animation extends EventDispatcher {
 			const { done, value } = this.iterator.next(delta);
 
 			if(done) {
+				this._numberOfPlayed++;
 				this['@done'].emit();
 
 				if(this.looped) {

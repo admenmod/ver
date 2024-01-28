@@ -1,7 +1,7 @@
 import type { Fn } from './helpers.js';
 
 
-const sort = (a: EventListener, b: EventListener) => a.priority - b.priority;
+const sort = (a: EventListener, b: EventListener) => b.priority - a.priority;
 
 
 export const EventAsFunction = <This, Args extends any[]>(_this: This) => {

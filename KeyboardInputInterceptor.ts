@@ -41,14 +41,15 @@ export class KeyboardInputInterceptor extends EventDispatcher {
 	public '@init' = new Event<KeyboardInputInterceptor, []>(this);
 	public '@destroy' = new Event<KeyboardInputInterceptor, []>(this);
 
-	// public '@keyup' = new Event<KeyboardInputInterceptor, [EventData]>(this);
-	// public '@keydown' = new Event<KeyboardInputInterceptor, [EventData]>(this);
 	public '@input' = new Event<KeyboardInputInterceptor, [EventData]>(this);
 	public '@keyup:input' = new Event<KeyboardInputInterceptor, [EventData]>(this);
 	public '@keydown:input' = new Event<KeyboardInputInterceptor, [EventData]>(this);
 	public '@key:all' = new Event<KeyboardInputInterceptor, [EventData]>(this);
 	public '@metakey' = new Event<KeyboardInputInterceptor, [EventData]>(this);
 	public '@Unidentified' = new Event<KeyboardInputInterceptor, [EventData]>(this);
+
+	public '@focus' = new Event<KeyboardInputInterceptor, []>(this);
+	public '@blur' = new Event<KeyboardInputInterceptor, []>(this);
 
 
 	private pressed: NameSpaceKeys = Object.create(null);
@@ -121,10 +122,20 @@ export class KeyboardInputInterceptor extends EventDispatcher {
 		};
 	}
 
+	public isFocus: boolean = false;
+	private focus_handler = (e: any) => {
+		if(e.type === 'blur' && this.isFocus) return this.focus();
+		(this as KeyboardInputInterceptor).emit(e.type as 'focus' | 'blur');
+	};
+
 	public init(this: KeyboardInputInterceptor): void {
 		this.input.addEventListener('keyup', this.handler);
 		this.input.addEventListener('keydown', this.handler);
 		this.input.addEventListener('beforeinput', this.handler);
+
+		this.input.addEventListener('focus', this.focus_handler);
+		this.input.addEventListener('blur', this.focus_handler);
+
 		this.emit('init');
 	}
 
@@ -132,9 +143,21 @@ export class KeyboardInputInterceptor extends EventDispatcher {
 		this.input.removeEventListener('keyup', this.handler);
 		this.input.removeEventListener('keydown', this.handler);
 		this.input.removeEventListener('beforeinput', this.handler);
+
+		this.input.removeEventListener('focus', this.focus_handler);
+		this.input.removeEventListener('blur', this.focus_handler);
+
 		this.emit('destroy');
 	}
 
-	public blur(): void { this.input.blur(); }
-	public focus(): void { this.input.focus(); }
+	public focus(): void {
+		this.isFocus = true;
+		this.input.focus();
+	}
+	public blur(): void {
+		this.isFocus = false;
+		this.input.blur();
+	}
+
+	public toggleFocus(): void { this.isFocus ? this.blur() : this.focus(); }
 }

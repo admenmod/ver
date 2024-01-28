@@ -63,7 +63,8 @@ export class KeymapperOfActions extends EventDispatcher {
 	public '@changemode' = new Event<KeymapperOfActions, [mode_t, MappingsMode]>(this);
 	public '@register' = new Event<KeymapperOfActions, [mode_t | 0, mapping_t, action_t]>(this);
 
-	protected keyboardInputInterceptor!: KeyboardInputInterceptor;
+	protected _keyboardInputInterceptor!: KeyboardInputInterceptor;
+	public get keyboardInputInterceptor() { return this._keyboardInputInterceptor; }
 
 	private mode: mode_t | null = null;
 	public mapmap: Record<mode_t, MappingsMode> = Object.create(null);
@@ -96,17 +97,21 @@ export class KeymapperOfActions extends EventDispatcher {
 	public resetTimer(): void { this.timeout = this.timeoutlen; }
 
 	public enable(this: KeymapperOfActions): void {
+		if(this._isActive) return;
+
 		this._isActive = true;
 		this.emit('enable');
 	}
 
 	public disable(this: KeymapperOfActions): void {
+		if(!this._isActive) return;
+
 		this._isActive = false;
 		this.emit('disable');
 	}
 
 	public init(this: KeymapperOfActions, keyboardInputInterceptor: KeyboardInputInterceptor): void {
-		this.keyboardInputInterceptor = keyboardInputInterceptor;
+		this._keyboardInputInterceptor = keyboardInputInterceptor;
 
 		this.handler = e => {
 			this.isTimeRun = true;
@@ -145,13 +150,15 @@ export class KeymapperOfActions extends EventDispatcher {
 			} else if(!mapping) this.isTimeRun = false;
 		};
 
-		this.keyboardInputInterceptor.on('keydown:input', this.handler);
+		this._keyboardInputInterceptor.on('keydown:input', this.handler);
 
 		this.emit('init');
 	}
 
 	public destroy(this: KeymapperOfActions): void {
-		this.keyboardInputInterceptor.off('keydown:input', this.handler);
+		this.disable();
+
+		this._keyboardInputInterceptor.off('keydown:input', this.handler);
 
 		this.emit('disable');
 	}
@@ -193,6 +200,7 @@ export class KeymapperOfActions extends EventDispatcher {
 	}
 
 	public update(dt: number): void {
+		if(this._keyboardInputInterceptor.input !== document.activeElement) return;
 		if(!this._isActive) return;
 
 		if(this.acc.length && this.isTimeRun) this.timeout -= dt;

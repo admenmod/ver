@@ -149,6 +149,20 @@ export class Vector2 {
 		return this;
 	}
 
+	public round(a: number = 1): this {
+		for(let i = 0; i < this.length; ++i) (this as any)[i] = Math.round((this as any)[i]*a)/a;
+
+		this._cb?.(this[0], this[1]);
+		return this;
+	}
+
+	public ceil(a: number = 1): this {
+		for(let i = 0; i < this.length; ++i) (this as any)[i] = Math.ceil((this as any)[i]*a)/a;
+
+		this._cb?.(this[0], this[1]);
+		return this;
+	}
+
 	public isSame(v: Vector2_t): boolean {
 		for(let i = 0; i < this.length; ++i) {
 			if((this as any)[i] !== (v as any)[i]) return false;
@@ -266,6 +280,7 @@ export class Vector2 {
 
 	public toString(): string { return `Vector2(${this[0]}, ${this[1]})`; }
 	public [Symbol.toPrimitive](): string { return this.toString(); }
+	public *[Symbol.iterator](): Generator<number, void, unknown> { yield this[0]; yield this[1]; }
 
 	public static [Symbol.toStringTag]: string = 'Vector2';
 }
@@ -276,3 +291,24 @@ export const vec2: {
 	(x: number, y: number, cb: cb_t | null): Vector2;
 	//@ts-ignore
 } = (...args: any[]): Vector2 => new Vector2(...args);
+
+
+export class Vector2Cached extends Vector2 {
+	private _a_angle: boolean = true;
+	private _angle: number = super.angle;
+	public get angle() { return this._a_angle ? this._angle : this._angle = super.angle; }
+
+	private _a_module: boolean = true;
+	private _module: number = super.module;
+	public get module() { return this._a_module ? this._module : this._module = super.module; }
+
+	constructor();
+	constructor(x: number, y: number);
+	constructor(x: number, y: number, cb: cb_t | null);
+	constructor(x: number = 0, y: number = 0, cb: cb_t | null = null) {
+		super(x, y, (x, y) => {
+			this._a_angle = this._a_module = false;
+			cb?.(x, y);
+		});
+	}
+}

@@ -34,7 +34,7 @@ export class Viewport extends EventDispatcher {
 	public transformFromScreenToViewport(v: Vector2, isCentered = this.isCentered): Vector2 {
 		if(isCentered) v.sub(this.offset.x + this.size.x/2, this.offset.y + this.size.y/2);
 
-		v.div(this.scale);
+		v.inc(this.scale);
 
 		v.sub(this.pivot_offset);
 		v.rotate(this.rotation);
@@ -47,7 +47,7 @@ export class Viewport extends EventDispatcher {
 	public transformFromViewportToScreen(v: Vector2, isCentered = this.isCentered): Vector2 {
 		if(isCentered) v.add(this.offset.x + this.size.x/2, this.offset.y + this.size.y/2);
 
-		v.inc(this.scale);
+		v.div(this.scale);
 
 		v.sub(this.pivot_offset);
 		v.rotate(-this.rotation);
@@ -70,7 +70,7 @@ export class Viewport extends EventDispatcher {
 		this.ctx.translate(this.offset.x, this.offset.y);
 		if(isCentered) this.ctx.translate(this.size.x/2, this.size.y/2);
 
-		if(scale) this.ctx.scale(this.scale.x, this.scale.y);
+		if(scale) this.ctx.scale(1/this.scale.x, 1/this.scale.y);
 		if(rot) {
 			this.ctx.translate(this.pivot_offset.x, this.pivot_offset.y);
 			this.ctx.rotate(-this.rotation);

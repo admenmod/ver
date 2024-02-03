@@ -166,8 +166,7 @@ export class Scene extends EventDispatcher {
 	}
 
 	public get isRoot(): boolean { return this._parent === null; }
-
-	public get root(): Scene { return this._owner?.root || this; }
+	public get root(): Scene { return this._parent?.root || this; }
 
 
 	private _isEmbedded: boolean = false;

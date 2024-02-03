@@ -169,6 +169,7 @@ export class Touch extends EventDispatcher {
 	}
 
 	public get speed() { return this.s.module; }
+	/** relative position */
 	public get d() { return this.pos.buf().sub(this.b); }
 	public get dx() { return this.pos.x-this.b.x; }
 	public get dy() { return this.pos.y-this.b.y; }

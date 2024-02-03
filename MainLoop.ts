@@ -44,13 +44,13 @@ export class MainLoop extends EventDispatcher {
 				this.prevTime = currentTime;
 			}
 
-			if(requestAnimationFrame) requestAnimationFrame(_update);
+			if('requestAnimationFrame' in globalThis ) requestAnimationFrame(_update);
 			else setTimeout(_update, this.mindt, performance.now());
 		};
 
 		this.emit('start');
 
-		if(requestAnimationFrame) requestAnimationFrame(_update);
+		if('requestAnimationFrame' in globalThis ) requestAnimationFrame(_update);
 		else setTimeout(_update, this.mindt, performance.now());
 	}
 

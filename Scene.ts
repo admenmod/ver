@@ -51,7 +51,7 @@ export class Scene extends EventDispatcher {
 		this.__generate_tree();
 
 		await this._init();
-		this['@init'].emit();
+		await this['@init'].await_emit();
 
 		await Promise.all([...this.tree()].map(s => s.init()));
 
@@ -66,7 +66,7 @@ export class Scene extends EventDispatcher {
 	public async destroy(): Promise<boolean> {
 		if(!this._isInited || this._isDestroyed) return false;
 
-		this['@destroy'].emit();
+		await this['@destroy'].await_emit();
 		await this._destroy();
 
 		await Promise.all([...this.children()].map(s => s.destroy()));
@@ -75,7 +75,7 @@ export class Scene extends EventDispatcher {
 		this._isDestroyed = true;
 		this._isInited = false;
 
-		this['@destroyed'].emit();
+		await this['@destroyed'].await_emit();
 
 		this.events_off(true);
 
@@ -111,7 +111,7 @@ export class Scene extends EventDispatcher {
 		this.__init_TREE();
 
 		await this._load(this);
-		this.emit('load', this);
+		await this.await_emit('load', this);
 
 		this._isLoaded = true;
 		this._isUnloaded = false;
@@ -122,7 +122,7 @@ export class Scene extends EventDispatcher {
 	public static async unload(): Promise<boolean> {
 		if(!this.isLoaded) return false;
 
-		this.emit('unload', this);
+		await this.await_emit('unload', this);
 		await this._unload(this);
 
 		this.events_off(true);
@@ -270,11 +270,18 @@ export class Scene extends EventDispatcher {
 		return scene;
 	}
 
-	public moveChild(child: Scene, pos: pos_t) {
-		// if(typeof pos === 'number') this._children.splice(pos, 0, scene);
-		// else if(pos === 'start') this._children.unshift(scene);
-		// else if(pos === 'end') this._children.push(scene);
-		// else throw new Error('invalid argument "pos"');
+	public moveChild(child: Scene, pos: pos_t): void {
+		const l = this._children.indexOf(child);
+		if(!~l) throw new Error('scene is not a child');
+		this._children.splice(l, 1);
+
+		if(typeof pos === 'number') this._children.splice(pos, 0, child);
+		else if(pos === 'start') this._children.unshift(child);
+		else if(pos === 'end') this._children.push(child);
+		else {
+			this._children.splice(l, 0, child);
+			throw new Error('invalid argument "pos"');
+		}
 	}
 
 

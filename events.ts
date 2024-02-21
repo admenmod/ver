@@ -14,6 +14,9 @@ export const EventAsFunction = <This, Args extends any[]>(_this: This) => {
 		on(fn: fn, priority?: number, once?: boolean, shift?: boolean): void;
 		once(fn: fn, priority?: number, once?: boolean, shift?: boolean): void;
 		off(fn?: fn): void;
+
+		async(...args: Args): Promise<void>;
+		await(...args: Args): Promise<void>;
 		[Symbol.iterator](): Generator<EventListener<This, Args>, void, never>
 	}
 
@@ -21,6 +24,26 @@ export const EventAsFunction = <This, Args extends any[]>(_this: This) => {
 		for(let i = 0; i < listeners.length; ++i) {
 			const l = listeners[i];
 			l.fn.apply(l.ctx, args);
+			if(l.once) event.off(l.fn);
+		}
+	};
+
+	event.async = async (...args: Args): Promise<void> => {
+		const arr: Promise<unknown>[] = [];
+
+		for(let i = 0; i < listeners.length; ++i) {
+			const l = listeners[i];
+			arr.push(l.fn.apply(l.ctx, args));
+			if(l.once) event.off(l.fn);
+		}
+
+		await Promise.all(arr);
+	};
+
+	event.await = async (...args: Args): Promise<void> => {
+		for(let i = 0; i < listeners.length; ++i) {
+			const l = listeners[i];
+			await l.fn.apply(l.ctx, args);
 			if(l.once) event.off(l.fn);
 		}
 	};
@@ -119,6 +142,26 @@ export class Event<This = any, Args extends any[] = any[]> {
 		for(let i = 0; i < this._listeners.length; ++i) {
 			const l = this._listeners[i];
 			l.fn.apply(l.ctx, args);
+			if(l.once) this.off(l.fn);
+		}
+	}
+
+	public async async_emit(...args: Args): Promise<void> {
+		const arr: Promise<unknown>[] = [];
+
+		for(let i = 0; i < this._listeners.length; ++i) {
+			const l = this._listeners[i];
+			arr.push(l.fn.apply(l.ctx, args));
+			if(l.once) this.off(l.fn);
+		}
+
+		await Promise.all(arr);
+	}
+
+	public async await_emit(...args: Args): Promise<void> {
+		for(let i = 0; i < this._listeners.length; ++i) {
+			const l = this._listeners[i];
+			await l.fn.apply(l.ctx, args);
 			if(l.once) this.off(l.fn);
 		}
 	}
@@ -227,6 +270,22 @@ export class EventDispatcher {
 		return this[`@${type}`].emit(...args);
 	}
 
+	public static async_emit<This extends typeof EventDispatcher,
+		Type extends Event.KeysOf<This>,
+		Args extends Event.Args<This, Type>
+	>(this: This, type: Type, ...args: Args): Promise<void> {
+		//@ts-ignore
+		return this[`@${type}`].async_emit(...args);
+	}
+
+	public static await_emit<This extends typeof EventDispatcher,
+		Type extends Event.KeysOf<This>,
+		Args extends Event.Args<This, Type>
+	>(this: This, type: Type, ...args: Args): Promise<void> {
+		//@ts-ignore
+		return this[`@${type}`].await_emit(...args);
+	}
+
 
 	public on<This extends EventDispatcher,
 		Type extends Event.KeysOf<This>,
@@ -264,6 +323,22 @@ export class EventDispatcher {
 	>(this: This, type: Type, ...args: Args): void {
 		//@ts-ignore
 		return this[`@${type}`].emit(...args);
+	}
+
+	public async_emit<This extends EventDispatcher,
+		Type extends Event.KeysOf<This>,
+		Args extends Event.Args<This, Type>
+	>(this: This, type: Type, ...args: Args): Promise<void> {
+		//@ts-ignore
+		return this[`@${type}`].async_emit(...args);
+	}
+
+	public await_emit<This extends EventDispatcher,
+		Type extends Event.KeysOf<This>,
+		Args extends Event.Args<This, Type>
+	>(this: This, type: Type, ...args: Args): Promise<void> {
+		//@ts-ignore
+		return this[`@${type}`].await_emit(...args);
 	}
 
 

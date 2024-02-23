@@ -7,7 +7,7 @@ export class Viewport extends EventDispatcher {
 
 
 	public readonly position = new Vector2();
-	public readonly scale = new Vector2(1, 1);
+	public readonly scale: Vector2 = new Vector2(1, 1, () => (this.draw_distance = this.size.buf().inc(this.scale).div(2).module));
 
 	protected _rotation: number = 0;
 	public get rotation(): number { return this._rotation; }
@@ -17,13 +17,21 @@ export class Viewport extends EventDispatcher {
 	public readonly pivot_offset = new Vector2();
 
 	public readonly size: Vector2;
+	public draw_distance: number = 0;
 
 	public isCentered: boolean = true;
 
 	constructor(public ctx: CanvasRenderingContext2D) {
 		super();
 
-		this.size = new Vector2(ctx.canvas.width, ctx.canvas.height, (x, y) => this['@resize'].emit(new Vector2(x, y)));
+		this.size = new Vector2(ctx.canvas.width, ctx.canvas.height, (x, y) => {
+			this.draw_distance = this.size.buf().inc(this.scale).div(2).module;
+			this['@resize'].emit(this.size.buf());
+		});
+	}
+
+	public isInViewport(position: Vector2, draw_distance: number): boolean {
+		return this.position.getDistance(position) < this.draw_distance + draw_distance;
 	}
 
 	public transformToLocal(v: Vector2, isCentered = this.isCentered): Vector2 {
@@ -62,7 +70,7 @@ export class Viewport extends EventDispatcher {
 		this.ctx.clearRect(this.offset.x, this.offset.y, this.size.x, this.size.y);
 	}
 
-	public use(pos = true, rot = true, scale = true, isCentered = this.isCentered): void {
+	public use(isCentered = this.isCentered): void {
 		this.ctx.beginPath();
 		this.ctx.rect(this.offset.x, this.offset.y, this.size.x, this.size.y);
 		this.ctx.clip();
@@ -70,13 +78,13 @@ export class Viewport extends EventDispatcher {
 		this.ctx.translate(this.offset.x, this.offset.y);
 		if(isCentered) this.ctx.translate(this.size.x/2, this.size.y/2);
 
-		if(scale) this.ctx.scale(1/this.scale.x, 1/this.scale.y);
-		if(rot) {
-			this.ctx.translate(this.pivot_offset.x, this.pivot_offset.y);
-			this.ctx.rotate(-this.rotation);
-			this.ctx.translate(-this.pivot_offset.x, -this.pivot_offset.y);
-		}
-		if(pos) this.ctx.translate(-this.position.x, -this.position.y);
+		this.ctx.scale(1/this.scale.x, 1/this.scale.y);
+
+		this.ctx.translate(this.pivot_offset.x, this.pivot_offset.y);
+		this.ctx.rotate(-this.rotation);
+		this.ctx.translate(-this.pivot_offset.x, -this.pivot_offset.y);
+
+		this.ctx.translate(-this.position.x, -this.position.y);
 	}
 
 	public get vw() { return this.size.x / 100; }

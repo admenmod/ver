@@ -15,12 +15,12 @@ export class Vector2 {
 	constructor(x: number, y: number);
 	constructor(x: number, y: number, cb: cb_t | null);
 	constructor(x: number = 0, y: number = 0, cb: cb_t | null = null) {
+		this[0] = x; this[1] = y;
+
 		this._cb = cb;
 
 		Object.defineProperty(this, 'length', { writable: false, enumerable: false, configurable: true });
 		Object.defineProperty(this, '_cb', { writable: false, enumerable: false, configurable: true });
-
-		this.set(x || 0, y || 0);
 	}
 
 	public get x(): number { return this[0]; }

@@ -163,6 +163,24 @@ export class Vector2 {
 		return this;
 	}
 
+	public floorToZero(a: number = 1): this {
+		for(let i = 0; i < this.length; ++i) {
+			(this as any)[i] = Math.floor(Math.abs((this as any)[i] * a)) * Math.sign((this as any)[i]) / a;
+		}
+
+		this._cb?.(this[0], this[1]);
+		return this;
+	}
+
+	public ceilToZero(a: number = 1): this {
+		for(let i = 0; i < this.length; ++i) {
+			(this as any)[i] = Math.ceil(Math.abs((this as any)[i] * a)) * Math.sign((this as any)[i]) / a;
+		}
+
+		this._cb?.(this[0], this[1]);
+		return this;
+	}
+
 	public isSame(v: Vector2_t): boolean {
 		for(let i = 0; i < this.length; ++i) {
 			if((this as any)[i] !== (v as any)[i]) return false;

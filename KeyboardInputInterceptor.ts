@@ -28,7 +28,9 @@ interface EventData {
 	meta: boolean;
 	isMetaKey: boolean;
 	pressed: NameSpaceKeys;
-	event: any
+	event: any;
+	preventDefault: () => void;
+	input: HTMLInputElement | HTMLTextAreaElement;
 }
 
 
@@ -56,7 +58,7 @@ export class KeyboardInputInterceptor extends EventDispatcher {
 	private handler: any;
 
 
-	constructor(public input: HTMLInputElement | HTMLAreaElement, p: {
+	constructor(public input: HTMLInputElement | HTMLTextAreaElement, p: {
 		notPreventDefault?: boolean
 	} = {}) {
 		super();
@@ -74,6 +76,8 @@ export class KeyboardInputInterceptor extends EventDispatcher {
 
 			data.type = e.type;
 			data.event = e;
+			data.preventDefault = () => e.preventDefault();
+			data.input = input;
 
 			//@ts-ignore
 			if(e.key in METAKEYS) {

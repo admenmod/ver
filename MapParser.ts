@@ -22,13 +22,6 @@ export class MapParser extends EventDispatcher {
 
 	public loadMap(this: MapParser, src: string): Promise<MapParser.Map> {
 		return fetch(src).then(data => data.json()).then((_map: MapParser.Map) => {
-			for(let i = 0; i < _map.layers.length; i++) {
-				if(_map.layers[i].type === 'tilelayer') {
-					//@ts-ignore
-					_map.layers[i].data = new Uint16Array(_map.layers[i].data);
-				}
-			}
-
 			const map = new MapParser.Map(_map);
 
 
@@ -256,7 +249,8 @@ export namespace MapParser {
 
 			this.type = 'tilelayer';
 
-			this.data = o.data;
+			this.data = new Uint16Array(o.data);
+
 
 			this.x = o.x;
 			this.y = o.y;

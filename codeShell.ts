@@ -7,7 +7,8 @@ globalThis.codeShell = function(code, env = Object.create(null), p = {}) {
 		});
 	}
 
-	return eval(\`with(env) { (\${p.async ? 'async ':''}function\${p.generator ? '* ':''}(\${p.arguments || ''}) { \${p.strict ?? true ? "'use strict'; " : ''}\${code} }); } //# sourceURL=\${p.source || 'code'}\`);
+	return eval(\`with(env) { (\${p.async ? 'async ':''}function\${p.generator ? '* ':''}(\${p.arguments || ''}) { \${p.strict ?? true ? "'use strict'; " : ''}\${code}
+}); } //# sourceURL=\${p.source || 'code'}\`);
 }
 })();`;
 

@@ -5,7 +5,7 @@ export declare namespace Fn {
 	type R<F extends Fn> = F extends Fn<any, any, infer R> ? R : never;
 }
 
-export type Primotive = string | number | boolean | bigint;
+export type Primitive = string | number | boolean | bigint;
 
 export const hasOwnProperty = Object.prototype.hasOwnProperty;
 export const JSONcopy = <T extends object = object>(data: T): T => JSON.parse(JSON.stringify(data));
@@ -34,6 +34,8 @@ interface IMath extends Math {
 	randomFloat(a: number, b: number): number;
 	mod(x: number, min?: number, max?: number): number;
 	clamped(min: number, x: number, max: number): number;
+	floorToZero(x: number): number;
+	ceilToZero(x: number): number;
 }
 
 export const math: Readonly<IMath> = Object.create(null);
@@ -56,6 +58,9 @@ for(const id of Object.getOwnPropertyNames(Math)) (math as any)[id] = (Math as a
 };
 
 (math as IMath).clamped = (min: number, x: number, max: number): number => x < min ? min : x > max ? max : x;
+
+(math as IMath).floorToZero = (x: number) => math.floor(math.abs(x)) * Math.sign(x);
+(math as IMath).ceilToZero = (x: number) => math.ceil(math.abs(x)) * Math.sign(x);
 
 Object.freeze(math);
 

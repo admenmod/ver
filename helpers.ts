@@ -5,7 +5,48 @@ export declare namespace Fn {
 	type R<F extends Fn> = F extends Fn<any, any, infer R> ? R : never;
 }
 
-export type Primitive = string | number | boolean | bigint;
+export type Primitive = string | number | boolean | bigint | symbol | null | undefined;
+
+
+export const typeOf = <T = unknown>(a: T) => {
+	let type = typeof a;
+
+	if(a === null) return 'null';
+	if(type === 'symbol') return 'symbol';
+	if(type === 'string') return 'string';
+	if(type === 'number') return 'number';
+	if(type === 'boolean') return 'boolean';
+	if(type === 'bigint') return 'bigint';
+	if(Array.isArray(a)) return 'array';
+	if(type === 'object') return 'object';
+	if(type === 'function') return 'function';
+	if(type === 'undefined') return 'undefined';
+
+	throw new Error('unknown type');
+}
+
+export const type_of = <T = unknown>(a: T) => {
+	let type = typeof a;
+
+	if(a === null) return 'void/null';
+	if(type === 'undefined') return 'void/undefined';
+	if(type === 'symbol') return 'symbol';
+	if(type === 'string') return 'string';
+	if(type === 'number') {
+		if(Number.isNaN(a)) return 'number/NaN';
+		if(!Number.isFinite(a)) return 'number/infinity';
+		if(Number.isInteger(a)) return 'number/integer';
+		else return 'number/float';
+	}
+	if(type === 'boolean') return 'boolean';
+	if(type === 'bigint') return 'number/bigint';
+	if(Array.isArray(a)) return 'array/'+((a as any)?.[Symbol.toStringTag] || 'array') as `array/${string}`;
+	if(type === 'object') return 'object/'+((a as any)?.[Symbol.toStringTag] || 'object') as `object/${string}`;
+	if(type === 'function') return 'function';
+
+	throw new Error('unknown type');
+}
+
 
 export const hasOwnProperty = Object.prototype.hasOwnProperty;
 export const JSONcopy = <T extends object = object>(data: T): T => JSON.parse(JSON.stringify(data));

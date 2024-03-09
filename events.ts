@@ -4,23 +4,21 @@ import type { Fn } from './helpers.js';
 const sort = (a: EventListener, b: EventListener) => b.priority - a.priority;
 
 
+export interface IEventAsFunction<This, Args extends any[]> {
+	(...args: Args): void;
+	on(fn: Fn<This, Args>, priority?: number, once?: boolean, shift?: boolean): void;
+	once(fn: Fn<This, Args>, priority?: number, once?: boolean, shift?: boolean): void;
+	off(fn?: Fn<This, Args>): void;
+
+	async(...args: Args): Promise<void>;
+	await(...args: Args): Promise<void>;
+	[Symbol.iterator](): Generator<EventListener<This, Args>, void, never>
+}
+
 export const EventAsFunction = <This, Args extends any[]>(_this: This) => {
 	const listeners: EventListener<This, Args>[] = [];
 
-	type fn = Fn<This, Args>;
-
-	interface event {
-		(...args: Args): void;
-		on(fn: fn, priority?: number, once?: boolean, shift?: boolean): void;
-		once(fn: fn, priority?: number, once?: boolean, shift?: boolean): void;
-		off(fn?: fn): void;
-
-		async(...args: Args): Promise<void>;
-		await(...args: Args): Promise<void>;
-		[Symbol.iterator](): Generator<EventListener<This, Args>, void, never>
-	}
-
-	const event: event = (...args: Args): void => {
+	const event: IEventAsFunction<This, Args> = (...args: Args): void => {
 		for(let i = 0; i < listeners.length; ++i) {
 			const l = listeners[i];
 			l.fn.apply(l.ctx, args);
@@ -48,7 +46,7 @@ export const EventAsFunction = <This, Args extends any[]>(_this: This) => {
 		}
 	};
 
-	event.on = (fn: fn, priority: number = 0, once = false, shift = false): void => {
+	event.on = (fn: Fn<This, Args>, priority: number = 0, once = false, shift = false): void => {
 		const listener = new EventListener(fn, _this, priority, once) as EventListener;
 
 		if(!shift) listeners.push(listener);
@@ -57,11 +55,11 @@ export const EventAsFunction = <This, Args extends any[]>(_this: This) => {
 		listeners.sort(sort);
 	};
 
-	event.once = (fn: fn, priority: number = 0, once = true, shift = false): void => {
+	event.once = (fn: Fn<This, Args>, priority: number = 0, once = true, shift = false): void => {
 		event.on(fn, priority, once, shift);
 	};
 
-	event.off = (fn?: fn) => {
+	event.off = (fn?: Fn<This, Args>) => {
 		if(fn) {
 			const i: number = listeners.findIndex(l => l.fn === fn);
 			if(!~i) return;

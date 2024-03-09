@@ -3,6 +3,9 @@ import { Scene } from './Scene.js';
 
 
 export class System<Item extends typeof Scene> extends EventDispatcher {
+	public '@destroy' = new Event<System<Item>, []>(this);
+	public '@destroyed' = new Event<System<Item>, []>(this);
+
 	public '@add' = new Event<System<Item>, [item: InstanceType<Item>]>(this);
 	public '@removing' = new Event<System<Item>, [item: InstanceType<Item>]>(this);
 	public '@removed' = new Event<System<Item>, [item: InstanceType<Item>]>(this);
@@ -108,6 +111,8 @@ export class System<Item extends typeof Scene> extends EventDispatcher {
 	public destroy(): boolean {
 		if(this._isDestroyed) return false;
 
+		this['@destroy'].emit();
+
 		for(let i = 0; i < this._observed.length; i++) {
 			this.unwatch(this._observed[i]);
 		}
@@ -115,6 +120,8 @@ export class System<Item extends typeof Scene> extends EventDispatcher {
 		for(let i = 0; i < this._items.length; i++) {
 			this.remove(this._items[i], false);
 		}
+
+		this['@destroyed'].emit();
 
 		this.events_off(true);
 

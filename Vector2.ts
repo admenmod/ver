@@ -300,7 +300,7 @@ export class Vector2 {
 	public [Symbol.toPrimitive](): string { return this.toString(); }
 	public *[Symbol.iterator](): Generator<number, void, unknown> { yield this[0]; yield this[1]; }
 
-	public static [Symbol.toStringTag]: string = 'Vector2';
+	public static readonly [Symbol.toStringTag]: string = 'Vector2';
 }
 
 export const vec2: {

@@ -1,22 +1,27 @@
 import { Vector2 } from './Vector2.js';
 import { Event, EventDispatcher } from './events.js';
 
+export const config = {
+	DOWN_TIME: 300,
+	CLICK_TIME: 300,
+	CLICK_GAP: 300
+};
 
 export class TouchesController extends EventDispatcher {
 	public active: number[] = [];
 	public touches: Touch[] = [];
 
 	public '@touchstart' = new Event<TouchesController, [
-		t: Touch, e: globalThis.Touch, touches: TouchesController, e: TouchEvent]>(this);
+		touch: Touch, e_touch: globalThis.Touch, touches: TouchesController, e: TouchEvent]>(this);
 	public '@touchend' = new Event<TouchesController, [
-		t: Touch, touches: TouchesController, e: TouchEvent]>(this);
+		touch: Touch, touches: TouchesController, e: TouchEvent]>(this);
 	public '@touchmove' = new Event<TouchesController, [
-		t: Touch, e: globalThis.Touch, touches: TouchesController, e: TouchEvent]>(this);
+		touch: Touch, e_touch: globalThis.Touch, touches: TouchesController, e: TouchEvent]>(this);
 
 	public '@touchclick' = new Event<TouchesController, [
-		count: number, t: Touch, touches: TouchesController, e: TouchEvent]>(this);
+		touch: Touch, touches: TouchesController, e: TouchEvent]>(this);
 	public '@touchdblclick' = new Event<TouchesController, [
-		t: Touch, touches: TouchesController, e: TouchEvent]>(this);
+		touch: Touch, touches: TouchesController, e: TouchEvent]>(this);
 
 	constructor(el: HTMLElement, filter = (e: TouchEvent) => true) {
 		super();
@@ -40,7 +45,7 @@ export class TouchesController extends EventDispatcher {
 
 				tTouch.downTime = 0;
 
-				tTouch.isMoved = false;
+				tTouch.moved = false;
 
 				tTouch.fD = true;
 				tTouch.fP = true;
@@ -77,21 +82,22 @@ export class TouchesController extends EventDispatcher {
 
 				tTouch.upTime = 0;
 
-				if(!tTouch.isMoved) tTouch.fC = true;
+				if(!tTouch.moved) tTouch.fC = true;
 
 				tTouch.isActive = false;
 				this.active.splice(k, 1);
 
-				if(tTouch.fC) tTouch.clickCount++;
-				else tTouch.clickCount = 0;
+				if(tTouch.fC && tTouch.downTime <= config.CLICK_TIME && tTouch.upTime <= config.CLICK_GAP) {
+					tTouch.clickCount++;
+				} else tTouch.clickCount = 0;
 
 				tTouch['@end'].emit(tTouch, this, e);
-				if(tTouch.fC) tTouch['@click'].emit(tTouch.clickCount, tTouch, this, e);
-				if(tTouch.fC && tTouch.clickCount === 2) tTouch['@dblclick'].emit(tTouch, this, e);
+				if(tTouch.clickCount) tTouch['@click'].emit(tTouch, this, e);
+				if(tTouch.clickCount === 2) tTouch['@dblclick'].emit(tTouch, this, e);
 
 				this['@touchend'].emit(tTouch, this, e);
-				if(tTouch.fC) this['@touchclick'].emit(tTouch.clickCount, tTouch, this, e);
-				if(tTouch.fC && tTouch.clickCount === 2) this['@touchdblclick'].emit(tTouch, this, e);
+				if(tTouch.clickCount) this['@touchclick'].emit(tTouch, this, e);
+				if(tTouch.clickCount === 2) this['@touchdblclick'].emit(tTouch, this, e);
 			}
 		}, { passive: true });
 
@@ -112,7 +118,7 @@ export class TouchesController extends EventDispatcher {
 
 					tTouch.fM = true;
 
-					tTouch.isMoved = true;
+					tTouch.moved = true;
 
 					tTouch.s.x = tTouch.x-tTouch.p.x;
 					tTouch.s.y = tTouch.y-tTouch.p.y;
@@ -131,8 +137,10 @@ export class TouchesController extends EventDispatcher {
 	public isPress() { return this.touches.some(i => i.isPress()); }
 	public isUp() { return this.touches.some(i => i.isUp()); }
 	public isMove() { return this.touches.some(i => i.isMove()); }
-	public isClick(count: number = 1) { return this.touches.some(i => i.isClick(count)); }
-	public isdblClick(gap: number = 300) { return this.touches.some(i => i.isdblClick(gap)); }
+	public isClick(time: number = config.CLICK_TIME, gap: number = config.CLICK_GAP) {
+		return this.touches.some(i => i.isClick(time, gap));
+	}
+	public isdblClick() { return this.touches.some(i => i.isdblClick()); }
 	public isTimeDown(time: number) { return this.touches.some(i => i.isTimeDown(time)); }
 
 	public findTouch(cb = (touch: Touch) => true) { return this.touches.find(t => t.isPress() && cb(t)) || null; }
@@ -151,16 +159,14 @@ export class Touch extends EventDispatcher {
 	public isActive: boolean = false;
 
 	public '@start' = new Event<Touch, [
-		t: Touch, e: globalThis.Touch, touches: TouchesController, e: TouchEvent]>(this);
+		touch: Touch, e_touch: globalThis.Touch, touches: TouchesController, e: TouchEvent]>(this);
 	public '@end' = new Event<Touch, [
 		t: Touch, touches: TouchesController, e: TouchEvent]>(this);
 	public '@move' = new Event<Touch, [
-		t: Touch, e: globalThis.Touch, touches: TouchesController, e: TouchEvent]>(this);
+		touch: Touch, e_touch: globalThis.Touch, touches: TouchesController, e: TouchEvent]>(this);
 
-	public '@click' = new Event<Touch, [
-		count: number, t: Touch, touches: TouchesController, e: TouchEvent]>(this);
-	public '@dblclick' = new Event<Touch, [
-		t: Touch, touches: TouchesController, e: TouchEvent]>(this);
+	public '@click' = new Event<Touch, [touch: Touch, touches: TouchesController, e: TouchEvent]>(this);
+	public '@dblclick' = new Event<Touch, [touch: Touch, touches: TouchesController, e: TouchEvent]>(this);
 
 	public pos = new Vector2();
 	public get x() { return this.pos.x; }
@@ -179,12 +185,16 @@ export class Touch extends EventDispatcher {
 	/** fix start position */
 	public b = new Vector2();
 
+	/** flag down */
 	public fD: boolean = false;
+	/** flag press */
 	public fP: boolean = false;
+	/** flag up */
 	public fU: boolean = false;
+	/** flag move */
 	public fM: boolean = false;
+	/** flag click */
 	public fC: boolean = false;
-	public fdbC: boolean = false;
 
 	public clickCount: number = 0;
 
@@ -194,7 +204,7 @@ export class Touch extends EventDispatcher {
 	public down: boolean = false;
 	public downTime: number = 0;
 
-	public isMoved: boolean = false;
+	public moved: boolean = false;
 
 	constructor(id: number) {
 		super();
@@ -209,22 +219,26 @@ export class Touch extends EventDispatcher {
 	public get dy() { return this.pos.y-this.b.y; }
 	public get beeline() { return Math.sqrt(this.dx**2 + this.dy**2); }
 
+	public isMoved() { return this.moved; }
+
 	public isDown() { return this.fD; }
 	public isPress() { return this.fP; }
 	public isUp() { return this.fU; }
 	public isMove() { return this.fM; }
 
-	public isClick(count: number = 1, time: number = 300, gap: number = 300) {
-		return this.fC && this.clickCount === count && this.down && this.downTime < time && this.up && this.upTime < gap;
+	public isClick(time: number = config.CLICK_TIME, gap: number = config.CLICK_GAP) {
+		return this.fC && this.downTime <= time && this.upTime <= gap;
 	}
-	public isdblClick(gap: number = 300) { return this.isClick(2, 300, gap); }
+	public isdblClick() { return this.clickCount === 2; }
 
-	public isTimeDown(time: number = 300) { return !this.isMoved && this.down && this.downTime >= time; }
+	public isTimeDown(time: number = config.DOWN_TIME) { return !this.moved && this.down && this.downTime >= time; }
 
 	public nullify(dt: number) {
 		if(this.up) this.upTime += dt;
 		if(this.down) this.downTime += dt;
-		this.fP = this.fU = this.fC = this.fM = this.fdbC = false;
+
+		if(this.downTime > config.CLICK_TIME || this.upTime > config.CLICK_GAP) this.clickCount = 0;
+		this.fP = this.fU = this.fM = this.fC = false;
 	}
 
 

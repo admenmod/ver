@@ -97,7 +97,7 @@ export namespace MapParser {
 	}
 
 
-	export interface IObject {
+	export interface IItemObject {
 		readonly id: number;
 		readonly name: string;
 		readonly type: string;
@@ -120,7 +120,7 @@ export namespace MapParser {
 
 		readonly draworder: string;
 
-		readonly objects: IObject[];
+		readonly objects: IItemObject[];
 	}
 
 
@@ -267,7 +267,7 @@ export namespace MapParser {
 	}
 
 
-	export class Object extends EventDispatcher implements IObject {
+	export class ItemObject extends EventDispatcher implements IItemObject {
 		public readonly id: number;
 		public readonly name: string;
 		public readonly type: string;
@@ -287,7 +287,7 @@ export namespace MapParser {
 		public readonly properties: IProperty[] = [];
 
 
-		constructor(o: IObject) {
+		constructor(o: IItemObject) {
 			super();
 
 			this.id = o.id;
@@ -317,7 +317,7 @@ export namespace MapParser {
 
 		public readonly draworder: string;
 
-		public readonly objects: IObject[] = [];
+		public readonly objects: IItemObject[] = [];
 
 		constructor(o: IObjectGroup) {
 			super(o);
@@ -327,7 +327,7 @@ export namespace MapParser {
 			this.draworder = o.draworder;
 
 			for(let i = 0; i < o.objects.length; i++) {
-				this.objects[i] = new Object(o.objects[i]);
+				this.objects[i] = new ItemObject(o.objects[i]);
 			}
 		}
 	}

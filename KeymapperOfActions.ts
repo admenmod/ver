@@ -34,7 +34,10 @@ export class Mapping implements IMapping {
 
 
 export class MappingsMode extends Array<IMapping> {
-	constructor(public readonly mode: mode_t) { super(); }
+	constructor(
+		public readonly mode: mode_t,
+		public isReset = (e: KeyboardInputInterceptor.Event): boolean => e.key === 'Escape'
+	) { super(); }
 
 	public register(this: MappingsMode, mapping: mapping_t, action: action_t): void {
 		const maps: MappingsMode = this;
@@ -69,7 +72,7 @@ export class KeymapperOfActions extends EventDispatcher {
 	private mode: mode_t | null = null;
 	public mapmap: Record<mode_t, MappingsMode> = Object.create(null);
 
-	public gmaps: MappingsMode = new MappingsMode(KeymapperOfActions.GLOBAL_MODE);
+	public gmaps: MappingsMode = new MappingsMode(KeymapperOfActions.GLOBAL_MODE, () => false);
 	public cmaps!: MappingsMode;
 	public mapping: IMapping | null = null;
 	public timeoutlen: number = 1000;
@@ -82,7 +85,6 @@ export class KeymapperOfActions extends EventDispatcher {
 	public get isActive(): boolean { return this._isActive; }
 
 	private handler!: (e: KeyboardInputInterceptor.Event) => any;
-
 
 	constructor(mode: mode_t | MappingsMode, timeoutlen?: number) {
 		super();
@@ -114,10 +116,12 @@ export class KeymapperOfActions extends EventDispatcher {
 		this._keyboardInputInterceptor = keyboardInputInterceptor;
 
 		this.handler = e => {
+			const maps = this.cmaps;
+
 			this.isTimeRun = true;
 			this.resetTimer();
 
-			if(e.key === 'Escape') {
+			if(maps.isReset(e) && this.gmaps.isReset(e)) {
 				this.resetAcc();
 				return;
 			}
@@ -130,8 +134,6 @@ export class KeymapperOfActions extends EventDispatcher {
 
 			this.acc.push(metapref+e.key);
 
-
-			const maps = this.cmaps;
 
 			const mappings = [
 				...maps.filter(i => isPartialMatching(this.acc, i.mapping)),

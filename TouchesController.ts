@@ -26,10 +26,10 @@ export class TouchesController extends EventDispatcher {
 	constructor(el: HTMLElement, filter = (e: TouchEvent) => true) {
 		super();
 
-		const box = el.getBoundingClientRect();
-
 		el.addEventListener('touchstart', e => {
 			if(!filter(e)) return;
+
+			const box = el.getBoundingClientRect();
 
 			if(e.touches.length > this.touches.length) this.touches.push(new Touch(this.touches.length));
 
@@ -64,6 +64,8 @@ export class TouchesController extends EventDispatcher {
 
 		el.addEventListener('touchend', e => {
 			if(!filter(e)) return;
+
+			const box = el.getBoundingClientRect();
 
 			for(let k = 0; k < this.active.length; k++) {
 				let c = false;
@@ -103,6 +105,8 @@ export class TouchesController extends EventDispatcher {
 
 		el.addEventListener('touchmove', e => {
 			if(!filter(e)) return;
+
+			const box = el.getBoundingClientRect();
 
 			for(let i = 0; i < e.touches.length; i++) {
 				let id = e.touches[i].identifier;
@@ -151,6 +155,9 @@ export class TouchesController extends EventDispatcher {
 		for(let i = 0; i < this.touches.length; i++) this.touches[i].destroy();
 		this.events_off(true);
 	}
+
+
+	public get [Symbol.toStringTag]() { return 'TouchesController'; }
 }
 
 
@@ -245,4 +252,7 @@ export class Touch extends EventDispatcher {
 	public destroy() {
 		this.events_off(true);
 	}
+
+
+	public get [Symbol.toStringTag]() { return 'Touch'; }
 }

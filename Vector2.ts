@@ -296,11 +296,11 @@ export class Vector2 {
 	public static readonly UP = Object.freeze(new Vector2(0, -1)) as Vector2;
 	public static readonly DOWN = Object.freeze(new Vector2(0, 1)) as Vector2;
 
-	public toString(): string { return `Vector2(${this[0]}, ${this[1]})`; }
+	public toString(fractionDigits?: number): string { return `Vector2(${this[0].toFixed(fractionDigits)}, ${this[1].toFixed(fractionDigits)})`; }
 	public [Symbol.toPrimitive](): string { return this.toString(); }
-	public *[Symbol.iterator](): Generator<number, void, unknown> { yield this[0]; yield this[1]; }
+	public *[Symbol.iterator](): Generator<number, void, void> { yield this[0]; yield this[1]; }
 
-	public static readonly [Symbol.toStringTag]: string = 'Vector2';
+	public get [Symbol.toStringTag]() { return 'Vector2'; }
 }
 
 export const vec2: {

@@ -40,8 +40,8 @@ export const type_of = <T = unknown>(a: T) => {
 	}
 	if(type === 'boolean') return 'boolean';
 	if(type === 'bigint') return 'number/bigint';
-	if(Array.isArray(a)) return 'array/'+((a as any)?.[Symbol.toStringTag] || 'array') as `array/${string}`;
-	if(type === 'object') return 'object/'+((a as any)?.[Symbol.toStringTag] || 'object') as `object/${string}`;
+	if(Array.isArray(a)) return 'array/'+((a as any)?.[Symbol.toStringTag] || a.constructor.name) as `array/${string}`;
+	if(type === 'object') return 'object/'+((a as any)?.[Symbol.toStringTag] || (a as any).constructor.name) as `object/${string}`;
 	if(type === 'function') return 'function';
 
 	throw new Error('unknown type');
@@ -106,11 +106,13 @@ for(const id of Object.getOwnPropertyNames(Math)) (math as any)[id] = (Math as a
 Object.freeze(math);
 
 
-export function delay<F extends Fn>(this: Fn.T<F>, cb: F, time: number = 0, ...args: Fn.A<F>) {
+export function delay(time: number): Promise<void>;
+export function delay<F extends Fn>(time: number, cb?: F, ctx?: Fn.T<F>, ...args: Fn.A<F>): Promise<Fn.R<F>>;
+export function delay<F extends Fn>(time: number = 0, cb?: F, ctx?: Fn.T<F>, ...args: Fn.A<F>): Promise<Fn.R<F> | void> {
 	return new Promise<Fn.R<F>>(res => {
 		const t = setTimeout(() => {
 			clearTimeout(t);
-			res(cb.call(this, ...args));
+			res(cb?.call(ctx, ...args));
 		}, time);
 	});
 }
@@ -185,23 +187,32 @@ export const SymbolSpace: SymbolSpace = function(symbolspace: any = null) {
 
 type Image = HTMLImageElement;
 
-type cb_t = (ctx: CanvasRenderingContext2D, w: number, h: number) => void;
+type cb_t = (ctx: OffscreenCanvasRenderingContext2D, w: number, h: number) => void;
 
 type generateImage_t = ((w: number, h: number, cb: cb_t) => Promise<Image>) & {
-	canvas?: HTMLCanvasElement;
+	canvas?: OffscreenCanvas;
 };
 
-export const generateImage: generateImage_t = (w, h, cb) => new Promise((res, rej) => {
-	const cvs: HTMLCanvasElement = generateImage.canvas || (generateImage.canvas = document.createElement('canvas'));
-	const ctx: CanvasRenderingContext2D = cvs.getContext('2d')!;
-	cvs.width = w; cvs.height = h;
+export const generateImage: generateImage_t = (w, h, cb, p?: ImageEncodeOptions) => new Promise(async (res, rej) => {
+	const canvas: OffscreenCanvas = generateImage.canvas || (generateImage.canvas = new OffscreenCanvas(w, h));
+	const ctx = canvas.getContext('2d')!;
+	canvas.width = w; canvas.height = h;
 
 	cb(ctx, w, h);
 
-	let img = new Image(w, h);
-	img.src = cvs.toDataURL();
-	img.onload = e => res(img);
-	img.onerror = e => rej(e);
+	const blob = await canvas.convertToBlob(p);
+	const url = URL.createObjectURL(blob);
+
+	const img = new Image(w, h);
+	img.src = url;
+	img.onload = () => {
+		URL.revokeObjectURL(url);
+		res(img);
+	};
+	img.onerror = e => {
+		URL.revokeObjectURL(url);
+		rej(e);
+	};
 });
 
 export const loadImage = (src: string, w?: number, h?: number): Promise<Image> => new Promise((res, rej) => {
@@ -231,5 +242,3 @@ export const loadScript = (src: string, p: {
 	script.onload = () => res();
 	script.onerror = e => rej(e);
 });
-
-const loader = { loadImage, loadScript, cache: new WeakMap() };

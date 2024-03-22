@@ -40,31 +40,36 @@ export namespace KeyboardInputInterceptor {
 
 
 export class KeyboardInputInterceptor extends EventDispatcher {
-	public '@init' = new Event<KeyboardInputInterceptor, []>(this);
-	public '@destroy' = new Event<KeyboardInputInterceptor, []>(this);
+	public '@init' = new Event<KeyboardInputInterceptor, [input: HTMLInputElement | HTMLTextAreaElement]>(this);
+	public '@destroy' = new Event<KeyboardInputInterceptor, [input: HTMLInputElement | HTMLTextAreaElement]>(this);
 
-	public '@input' = new Event<KeyboardInputInterceptor, [EventData]>(this);
-	public '@keyup:input' = new Event<KeyboardInputInterceptor, [EventData]>(this);
-	public '@keydown:input' = new Event<KeyboardInputInterceptor, [EventData]>(this);
-	public '@key:all' = new Event<KeyboardInputInterceptor, [EventData]>(this);
-	public '@metakey' = new Event<KeyboardInputInterceptor, [EventData]>(this);
-	public '@Unidentified' = new Event<KeyboardInputInterceptor, [EventData]>(this);
+	public '@input' = new Event<KeyboardInputInterceptor, [e: EventData]>(this);
+	public '@keyup:input' = new Event<KeyboardInputInterceptor, [e: EventData]>(this);
+	public '@keydown:input' = new Event<KeyboardInputInterceptor, [e: EventData]>(this);
+	public '@key:all' = new Event<KeyboardInputInterceptor, [e: EventData]>(this);
+	public '@metakey' = new Event<KeyboardInputInterceptor, [e: EventData]>(this);
+	public '@Unidentified' = new Event<KeyboardInputInterceptor, [e: EventData]>(this);
 
-	public '@focus' = new Event<KeyboardInputInterceptor, []>(this);
-	public '@blur' = new Event<KeyboardInputInterceptor, []>(this);
+	public '@focus' = new Event<KeyboardInputInterceptor, [input: HTMLInputElement | HTMLTextAreaElement]>(this);
+	public '@blur' = new Event<KeyboardInputInterceptor, [input: HTMLInputElement | HTMLTextAreaElement]>(this);
 
 
 	private pressed: NameSpaceKeys = Object.create(null);
 	private handler: any;
 
+	protected _isInited: boolean = false;
+	public get isInited() {	return this._isInited; }
 
-	constructor(public input: HTMLInputElement | HTMLTextAreaElement, p: {
-		notPreventDefault?: boolean
-	} = {}) {
+	#input: HTMLInputElement | HTMLTextAreaElement | null = null;
+	public get input() { return this.#input; }
+
+	constructor(p: { preventDefault?: boolean } = {}) {
 		super();
 
 		this.handler = (e: any) => {
-			if(!p.notPreventDefault) e.preventDefault();
+			if(!this.#input || !this._isInited || this.#input !== e.currentTarget) return;
+
+			if(p.preventDefault) e.preventDefault();
 
 			const data: EventData = {
 				shift: false,
@@ -77,13 +82,9 @@ export class KeyboardInputInterceptor extends EventDispatcher {
 			data.type = e.type;
 			data.event = e;
 			data.preventDefault = () => e.preventDefault();
-			data.input = input;
+			data.input = this.#input;
 
-			//@ts-ignore
-			if(e.key in METAKEYS) {
-				// TODO:  <05-04-23, admenmod> //
-				return (this as KeyboardInputInterceptor).emit('metakey', data);
-			}
+			if(e.key in METAKEYS) return (this as KeyboardInputInterceptor).emit('metakey', data);
 
 			if(e.key === 'Unidentified' && e.keyCode === 229) {
 				return (this as KeyboardInputInterceptor).emit('Unidentified', data);
@@ -129,39 +130,61 @@ export class KeyboardInputInterceptor extends EventDispatcher {
 	public isFocus: boolean = false;
 	private focus_handler = (e: any) => {
 		if(e.type === 'blur' && this.isFocus) return this.focus();
-		(this as KeyboardInputInterceptor).emit(e.type as 'focus' | 'blur');
+		(this as KeyboardInputInterceptor).emit(e.type as 'focus' | 'blur', this.#input!);
 	};
 
-	public init(this: KeyboardInputInterceptor): void {
-		this.input.addEventListener('keyup', this.handler);
-		this.input.addEventListener('keydown', this.handler);
-		this.input.addEventListener('beforeinput', this.handler);
+	public init(input: HTMLInputElement | HTMLTextAreaElement): this {
+		if(this._isInited && this.#input !== input) throw new Error('destroy method not called');
+		if(this._isInited) return this;
+		this.#input = input;
 
-		this.input.addEventListener('focus', this.focus_handler);
-		this.input.addEventListener('blur', this.focus_handler);
+		this.#input.addEventListener('keyup', this.handler);
+		this.#input.addEventListener('keydown', this.handler);
+		this.#input.addEventListener('beforeinput', this.handler);
 
-		this.emit('init');
+		this.#input.addEventListener('focus', this.focus_handler);
+		this.#input.addEventListener('blur', this.focus_handler);
+
+		this['@init'].emit(this.#input);
+
+		this._isInited = true;
+
+		return this;
 	}
 
-	public destroy(this: KeyboardInputInterceptor): void {
-		this.input.removeEventListener('keyup', this.handler);
-		this.input.removeEventListener('keydown', this.handler);
-		this.input.removeEventListener('beforeinput', this.handler);
+	public destroy(): this {
+		if(!this._isInited || !this.#input) return this;
 
-		this.input.removeEventListener('focus', this.focus_handler);
-		this.input.removeEventListener('blur', this.focus_handler);
+		this.#input.removeEventListener('keyup', this.handler);
+		this.#input.removeEventListener('keydown', this.handler);
+		this.#input.removeEventListener('beforeinput', this.handler);
 
-		this.emit('destroy');
+		this.#input.removeEventListener('focus', this.focus_handler);
+		this.#input.removeEventListener('blur', this.focus_handler);
+
+		const input = this.#input;
+		this.#input = null;
+
+		this['@destroy'].emit(input);
+
+		this._isInited = false;
+
+		return this;
 	}
 
 	public focus(): void {
+		if(!this._isInited || !this.#input) return;
 		this.isFocus = true;
-		this.input.focus();
+		this.#input.focus();
 	}
 	public blur(): void {
+		if(!this._isInited || !this.#input) return;
 		this.isFocus = false;
-		this.input.blur();
+		this.#input.blur();
 	}
 
-	public toggleFocus(): void { this.isFocus ? this.blur() : this.focus(); }
+	public toggleFocus(force?: boolean): void {
+		if(typeof force === 'undefined') this.isFocus ? this.blur() : this.focus();
+		else this.isFocus === !force ? this.blur() : this.focus();
+	}
 }

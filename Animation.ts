@@ -59,7 +59,10 @@ export class Animation extends EventDispatcher {
 
 		return true;
 	}
-	public toggle(a: boolean = false): void { this._isPlaying ? this.pause() : this.play(a); }
+	public toggle(a: boolean = false, force?: boolean): void {
+		if(typeof force === 'undefined') this._isPlaying ? this.pause() : this.play(a);
+		else this._isPlaying === !force ? this.pause() : this.play(a);
+	}
 
 	public reset(generator?: Animation.Generator): void {
 		if(generator) this.generator = generator;

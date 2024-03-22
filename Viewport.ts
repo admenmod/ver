@@ -2,8 +2,8 @@ import { Vector2 } from './Vector2.js';
 import { Event, EventDispatcher } from './events.js';
 
 
-export class Viewport extends EventDispatcher {
-	public '@resize' = new Event<Viewport, [size: Vector2]>(this);
+export class Viewport<T extends CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D = OffscreenCanvasRenderingContext2D> extends EventDispatcher {
+	public '@resize' = new Event<Viewport<T>, [size: Vector2]>(this);
 
 
 	public readonly position = new Vector2();
@@ -21,7 +21,7 @@ export class Viewport extends EventDispatcher {
 
 	public isCentered: boolean = true;
 
-	constructor(public ctx: CanvasRenderingContext2D) {
+	constructor(public ctx: T) {
 		super();
 
 		this.size = new Vector2(ctx.canvas.width, ctx.canvas.height, (x, y) => {
@@ -93,4 +93,6 @@ export class Viewport extends EventDispatcher {
 	public get vhw() { return this.size.y / this.size.x; }
 	public get vmax() { return Math.max(this.size.x, this.size.y) / 100; }
 	public get vmin() { return Math.min(this.size.x, this.size.y) / 100; }
+
+	public get [Symbol.toStringTag]() { return 'Viewport' as const; }
 }

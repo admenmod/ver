@@ -142,7 +142,7 @@ export class Scene extends EventDispatcher {
 	public '@tree_exiting' = new Event<Scene, [parent: Scene]>(this);
 	public '@tree_exited' = new Event<Scene, [parent: Scene]>(this);
 
-	public '@renamed' = new Event<Scene, []>(this);
+	public '@renamed' = new Event<Scene, [name: string, origin: unknown]>(this);
 
 
 	protected _parent: Scene | null = null;
@@ -154,15 +154,17 @@ export class Scene extends EventDispatcher {
 	public get owner() { return this._owner; }
 
 	private _name: string = this.constructor.name;
-	public get name() { return this._name; }
-	public set name(v) {
-		v = v.replace(/@|\s/g, '');
+	public get name(): string { return this._name; }
+	public set name(origin: unknown) {
+		const v = String(origin).replace(/\W+/, '');
+
+		if(String(origin) !== v) console.warn(`(${origin}) this name invalid, changed to (${v})`);
 
 		if(this._name === v) return;
 		if(this._parent && this._parent.getChild(v)) throw new Error(`(${v}) this name is already in use`);
 
 		this._name = v;
-		this['@renamed'].emit();
+		this['@renamed'].emit(this._name, origin);
 	}
 
 	public get isRoot(): boolean { return this._parent === null; }

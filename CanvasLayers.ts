@@ -24,13 +24,13 @@ export class ShadowLayer extends EventDispatcher {
 		this['@change%zIndex'].emit(prev, this._zIndex);
 	}
 
-	constructor(public id: string, ref: { width: number, height: number } | Vector2, zIndex: number = 0) {
+	constructor(public id: string, size: { width: number, height: number } | Vector2, zIndex: number = 0) {
 		super();
 
 		this.zIndex = zIndex;
 
-		if(ref instanceof Vector2) this.canvas = new OffscreenCanvas(ref.x, ref.y);
-		else this.canvas = new OffscreenCanvas(ref.width, ref.height);
+		if(size instanceof Vector2) this.canvas = new OffscreenCanvas(size.x, size.y);
+		else this.canvas = new OffscreenCanvas(size.width, size.height);
 
 		this.size = new Vector2(this.canvas.width, this.canvas.height, (x, y) => {
 			this.canvas.width = x;
@@ -41,6 +41,10 @@ export class ShadowLayer extends EventDispatcher {
 
 
 export class CanvasLayers extends EventDispatcher {
+	public '@init' = new Event<CanvasLayers, []>(this);
+	public '@destroy' = new Event<CanvasLayers, []>(this);
+	public '@destroyed' = new Event<CanvasLayers, []>(this);
+
 	public '@resize' = new Event<CanvasLayers, [size: Vector2]>(this);
 	public '@PreRender' = new Event<CanvasLayers, [ctx: CanvasRenderingContext2D]>(this);
 	public '@PostRender' = new Event<CanvasLayers, [ctx: CanvasRenderingContext2D]>(this);
@@ -53,11 +57,29 @@ export class CanvasLayers extends EventDispatcher {
 
 	public layers: ShadowLayer[] = [];
 
-	public resizeobserver: ResizeObserver;
+	public resizeobserver!: ResizeObserver;
 
-	public ctx: CanvasRenderingContext2D;
-	constructor(public canvas: HTMLCanvasElement) {
+	public canvas!: HTMLCanvasElement;
+	public ctx!: CanvasRenderingContext2D;
+
+	constructor() {
 		super();
+
+		const _sort = () => this.layers.sort(sort);
+		_sort();
+
+		this['@create'].on(layer => layer.on('change%zIndex', _sort));
+		this['@remove'].on(layer => layer.off('change%zIndex', _sort));
+	}
+
+	protected _isInited: boolean = false;
+	public isInited() { return this._isInited; }
+
+	public init(canvas: HTMLCanvasElement): this {
+		if(this._isInited) return this;
+		this._isInited = true;
+
+		this.canvas = canvas;
 
 		const box = this.canvas.getBoundingClientRect();
 		this.#box_width	= box.width || 1; this.#box_height = box.height || 1;
@@ -70,13 +92,24 @@ export class CanvasLayers extends EventDispatcher {
 			this.#box_height = rect.height || 1;
 			this.sizeUpdate();
 		});
-		this.resizeobserver.observe(canvas);
+		this.resizeobserver.observe(this.canvas);
 
-		const _sort = () => this.layers.sort(sort);
-		_sort();
+		this['@init'].emit();
 
-		this['@create'].on(layer => layer.on('change%zIndex', _sort));
-		this['@remove'].on(layer => layer.off('change%zIndex', _sort));
+		return this;
+	}
+
+	public destroy(): this {
+		if(!this._isInited) return this;
+		this._isInited = false;
+
+		this['@destroy'].emit();
+
+		this.resizeobserver.unobserve(this.canvas);
+
+		this['@destroyed'].emit();
+
+		return this;
 	}
 
 	#pixelScale: number = 1;
@@ -89,11 +122,11 @@ export class CanvasLayers extends EventDispatcher {
 	}
 	public get pixelScale() { return this.#pixelScale; }
 
-	#box_width: number;
+	#box_width!: number;
 	public get width() { return this.#width; }
 	public get box_width() { return this.#box_width; }
 
-	#box_height: number;
+	#box_height!: number;
 	public get height() { return this.#height; }
 	public get box_height() { return this.#box_height; }
 

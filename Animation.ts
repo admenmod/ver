@@ -1,20 +1,29 @@
 import { Event, EventDispatcher } from './events.js';
 
 
-type Iter = Generator<number, void, number>;
+type Iter = Generator<number, void | boolean, number>;
 
 export declare namespace Animation {
 	export type Iterator = Iter;
-	export type Generator = (this: Animation) => Iter;
-}
-export class Animation extends EventDispatcher {
-	public static readonly MIN_TIME: number = 10;
+	export type Generator<Args extends any[]> = (...args: Args) => Iter;
 
-	public '@play' = new Event<Animation, []>(this);
-	public '@pause' = new Event<Animation, []>(this);
-	public '@done' = new Event<Animation, []>(this);
-	public '@tick' = new Event<Animation, []>(this);
-	public '@reset' = new Event<Animation, []>(this);
+	export type ArgsOfAnimation<T extends Animation<any>> = T extends Animation<infer A> ? A : never;
+	export type ArgsOfGenerator<T extends Animation.Generator<any>> = T extends Animation.Generator<infer A> ? A : never;
+}
+export class Animation<const Args extends any[] = never> extends EventDispatcher {
+	public static readonly MIN_TIME: number = 5;
+
+	public '@play' = new Event<Animation<Args>, []>(this);
+	public '@pause' = new Event<Animation<Args>, []>(this);
+	public '@done' = new Event<Animation<Args>, []>(this);
+	public '@tick' = new Event<Animation<Args>, []>(this);
+	public '@end' = new Event<Animation<Args>, []>(this);
+	public '@run' = new Event<Animation<Args>, Args>(this);
+	public '@replay' = new Event<Animation<Args>, []>(this);
+	public '@reset' = new Event<Animation<Args>, [
+		next: Animation.Generator<Args>,
+		prev: Animation.Generator<Args>
+	]>(this);
 
 	public done: boolean = true;
 
@@ -25,28 +34,28 @@ export class Animation extends EventDispatcher {
 	public get numberOfPlayed() { return this._numberOfPlayed; }
 
 	protected _isPlaying: boolean = false;
-	public get isPlayed() { return this._isPlaying; }
-	public get isPaused() { return !this._isPlaying; }
+	public isPlayed() { return this._isPlaying; }
+	public isPaused() { return !this._isPlaying; }
 
-	declare public [Symbol.iterator]: Animation.Iterator;
-	public get iterator() { return this[Symbol.iterator]; }
-	public set iterator(v) { this[Symbol.iterator] = v; }
+	public looped: boolean;
+	public isTimeSync: boolean;
+	public readonly MIN_TIME: number;
 
-	constructor(
-		public generator: Animation.Generator,
-		public looped: boolean = false,
-		public isTimeSync: boolean = false,
-		public readonly MIN_TIME: number = Animation.MIN_TIME
-	) { super(); }
+	public iterator: Animation.Iterator | null = null;
 
-	public play(a: boolean = false): boolean {
+	constructor(public generator: Animation.Generator<Args>, p: {
+		looped?: boolean, isTimeSync?: boolean, MIN_TIME?: number
+	} = {}) {
+		super();
+
+		this.looped = p.looped ?? false;
+		this.isTimeSync = p.isTimeSync ?? false;
+		this.MIN_TIME = p.MIN_TIME ?? Animation.MIN_TIME;
+	}
+
+	public play(): boolean {
 		if(this._isPlaying) return false;
 		this._isPlaying = true;
-
-		if(!this._numberOfPlayed || a && this.done) {
-			this.reset();
-			this.time = this.iterator.next().value || 0;
-		}
 
 		this['@play'].emit();
 
@@ -59,27 +68,71 @@ export class Animation extends EventDispatcher {
 
 		return true;
 	}
-	public toggle(a: boolean = false, force?: boolean): void {
-		if(typeof force === 'undefined') this._isPlaying ? this.pause() : this.play(a);
-		else this._isPlaying === !force ? this.pause() : this.play(a);
+	public toggle(force?: boolean): void {
+		if(typeof force === 'undefined') this._isPlaying ? this.pause() : this.play();
+		else this._isPlaying === !force ? this.pause() : this.play();
 	}
 
-	public reset(generator?: Animation.Generator): void {
+	#args?: Args;
+	public run(...args: Args): Promise<this> {
+		if(this.iterator || !this.done || this._isPlaying) throw new Error('animation not completed');
+
+		this.iterator = this.generator.apply(this, args);
+
+		this.done = false;
+		this._isPlaying = true;
+
+		const { done, value } = this.iterator.next();
+		if(!done) this.time = value || 0;
+		else throw new Error('invalid animation');
+
+		this['@run'].emit(...args);
+
+		this.#args = args;
+
+		return new Promise<this>(res => this['@done'].once(() => res(this)));
+	}
+
+	public reset(generator?: Animation.Generator<Args>): this {
+		if(!this.iterator) return this;
+
+		const prev_generator = this.generator;
 		if(generator) this.generator = generator;
 
-		this.iterator?.return(void 0);
-		this.iterator = this.generator.call(this);
+		this.iterator.return();
+		this.iterator = null;
+
+		this.dt = 0;
+		this.done = true;
+		this._isPlaying = false;
+		if(this.generator !== prev_generator) this._numberOfPlayed = 0;
+
+		this['@reset'].emit(this.generator, prev_generator);
+
+		return this;
+	}
+
+	public replay(): this {
+		if(!this.iterator || !this.#args) throw new Error('replay before running');
+
+		this.iterator.return();
+		this.iterator = this.generator.apply(this, this.#args);
 
 		this.dt = 0;
 		this.done = false;
+		this._isPlaying = true;
 
-		if(generator) this._numberOfPlayed = 0;
+		const { done, value } = this.iterator.next();
+		if(!done) this.time = value || 0;
+		else throw new Error('invalid animation');
 
-		this['@reset'].emit();
+		this['@replay'].emit();
+
+		return this;
 	}
 
 	public tick(dt: number): void {
-		if(this.done || !this._isPlaying) return;
+		if(!this.iterator || this.done || !this._isPlaying) return;
 
 		this.dt += dt;
 		if(this.dt < this.time) return;
@@ -93,12 +146,12 @@ export class Animation extends EventDispatcher {
 				this._numberOfPlayed++;
 				this['@done'].emit();
 
-				if(this.looped) {
-					this.reset();
+				if(value === void 0 && this.looped || value) {
+					this.replay();
 					continue;
 				} else {
-					this.done = done;
-					this._isPlaying = false;
+					this.reset();
+					this['@end'].emit();
 					return;
 				}
 			}

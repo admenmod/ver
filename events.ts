@@ -2,7 +2,7 @@ import type { Fn } from './helpers.js';
 
 
 export const DEFAULT_TAG = Symbol('DEFAULT_TAG');
-const sort = (a: EventListener, b: EventListener) => b.priority - a.priority;
+const sort = (a: EventListener, b: EventListener) => a.priority - b.priority;
 
 type tag = string | symbol;
 
@@ -15,9 +15,10 @@ export interface EventAsFunction<This, Args extends any[]> {
 	off(tag: tag): number;
 	off(fn: Fn<This, Args>): number;
 
+	emit(...args: Args): void;
 	async(...args: Args): Promise<void>;
 	await(...args: Args): Promise<void>;
-	[Symbol.iterator](): Generator<EventListener<This, Args>, void, void>
+	[Symbol.iterator](): Generator<EventListener<This, Args>, void, void>;
 }
 
 export const EventAsFunction = function<This = any, Args extends any[] = any[]>(_this: This) {
@@ -25,39 +26,41 @@ export const EventAsFunction = function<This = any, Args extends any[] = any[]>(
 
 	const listeners: EventListener<This, Args>[] = [];
 
-	const event: EventAsFunction<This, Args> = (...args: Args): void => {
-		for(let i = 0; i < listeners.length; ++i) {
+	const event: EventAsFunction<This, Args> = (...args: Args): void => event.emit(...args);
+
+	event.emit = (...args: Args): void => {
+		for(let i = listeners.length-1; i >= 0; --i) {
 			const l = listeners[i];
 			l.fn.apply(l.ctx, args);
-			if(l.once) i -= event.off(l.fn);
+			if(l.once) event.off(l.fn);
 		}
 	};
 
 	event.async = async (...args: Args): Promise<void> => {
 		const arr: Promise<unknown>[] = [];
 
-		for(let i = 0; i < listeners.length; ++i) {
+		for(let i = listeners.length-1; i >= 0; --i) {
 			const l = listeners[i];
 			arr.push(l.fn.apply(l.ctx, args));
-			if(l.once) i -= event.off(l.fn);
+			if(l.once) event.off(l.fn);
 		}
 
 		await Promise.all(arr);
 	};
 
 	event.await = async (...args: Args): Promise<void> => {
-		for(let i = 0; i < listeners.length; ++i) {
+		for(let i = listeners.length-1; i >= 0; --i) {
 			const l = listeners[i];
 			await l.fn.apply(l.ctx, args);
-			if(l.once) i -= event.off(l.fn);
+			if(l.once) event.off(l.fn);
 		}
 	};
 
 	event.on = (fn: Fn<This, Args>, priority: number = 0, tag: tag = DEFAULT_TAG, once = false, shift = false): void => {
 		const listener = new EventListener(fn, _this, priority, tag, once) as EventListener;
 
-		if(!shift) listeners.push(listener);
-		else listeners.unshift(listener);
+		if(!shift) listeners.unshift(listener);
+		else listeners.push(listener);
 
 		listeners.sort(sort);
 	};
@@ -70,9 +73,9 @@ export const EventAsFunction = function<This = any, Args extends any[] = any[]>(
 		let c = 0;
 
 		if(tag) {
-			for(let i = 0; i < listeners.length; i++) {
-				if(listeners[i].fn === tag) return listeners.splice(i--, 1).length;
-				if(listeners[i].tag === tag) c += listeners.splice(i--, 1).length;
+			for(let i = listeners.length-1; i >= 0; --i) {
+				if(listeners[i].fn === tag) return listeners.splice(i, 1).length;
+				if(listeners[i].tag === tag) c += listeners.splice(i, 1).length;
 			}
 		} else {
 			c = listeners.length;
@@ -83,11 +86,46 @@ export const EventAsFunction = function<This = any, Args extends any[] = any[]>(
 	};
 
 	event[Symbol.iterator] = function*(): Generator<EventListener<This, Args>, void, void> {
-		for(let i = 0; i < listeners.length; i++) yield listeners[i];
+		for(let i = listeners.length-1; i >= 0; --i) yield listeners[i];
 	};
 
 	return event;
 } as unknown as new <This = any, Args extends any[] = any[]>(_this: This) => EventAsFunction<This, Args>;
+
+
+export interface FunctionIsEvent<This, Args extends any[], F extends Fn<any, any, any>> {
+	(this: Fn.T<F>, ...args: Fn.A<F>): Fn.R<F>;
+	on: EventAsFunction<This, Args>['on'];
+	once: EventAsFunction<This, Args>['once'];
+	off: EventAsFunction<This, Args>['off'];
+	emit: EventAsFunction<This, Args>['emit'];
+	async: EventAsFunction<This, Args>['async'];
+	await: EventAsFunction<This, Args>['await'];
+	[Symbol.iterator]: EventAsFunction<This, Args>[typeof Symbol.iterator];
+}
+
+export const FunctionIsEvent = function<
+	This = null, Args extends any[] = [],
+	F extends Fn<any, any, any> = Fn<null, [], void>
+>(_this: This, fn: F) {
+	if(!new.target) throw new Error(`Class constructor FunctionIsEvent connot be invoked without 'new'`);
+
+	const event = new EventAsFunction<This, Args>(_this);
+	const fn_event: FunctionIsEvent<This, Args, F> = (...args: Fn.A<F>): Fn.R<F> => fn.apply(event, args);
+
+	fn_event.on = event.on;
+	fn_event.once = event.once;
+	fn_event.off = event.off;
+	fn_event.emit = event.emit;
+	fn_event.async = event.async;
+	fn_event.await = event.await;
+	fn_event[Symbol.iterator] = event[Symbol.iterator];
+
+	return fn_event;
+} as unknown as new <
+	This = null, Args extends any[] = [],
+	F extends Fn<any, any, any> = Fn<null, [], void>
+>(_this: This, fn: F) => FunctionIsEvent<This, Args, F>;
 
 
 export class EventListener<This = any, Args extends any[] = any[]> {
@@ -133,8 +171,8 @@ export class Event<This = any, Args extends any[] = any[]> {
 	public on<T extends This>(fn: Fn<T, Args>, priority: number = 0, tag: tag = DEFAULT_TAG, once = false, shift = false): typeof fn {
 		const listener = new EventListener(fn, this.#this as any, priority, tag, once) as EventListener;
 
-		if(!shift) this.#listeners.push(listener);
-		else this.#listeners.unshift(listener);
+		if(!shift) this.#listeners.unshift(listener);
+		else this.#listeners.push(listener);
 
 		this.#listeners.sort(sort);
 
@@ -152,9 +190,9 @@ export class Event<This = any, Args extends any[] = any[]> {
 		let c = 0;
 
 		if(tag) {
-			for(let i = 0; i < this.#listeners.length; i++) {
-				if(this.#listeners[i].fn === tag) return this.#listeners.splice(i--, 1).length;
-				if(this.#listeners[i].tag === tag) c += this.#listeners.splice(i--, 1).length;
+			for(let i = this.#listeners.length-1; i >= 0; --i) {
+				if(this.#listeners[i].fn === tag) return this.#listeners.splice(i, 1).length;
+				if(this.#listeners[i].tag === tag) c += this.#listeners.splice(i, 1).length;
 			}
 		} else {
 			c = this.#listeners.length;
@@ -165,35 +203,35 @@ export class Event<This = any, Args extends any[] = any[]> {
 	}
 
 	public emit(...args: Args): void {
-		for(let i = 0; i < this.#listeners.length; ++i) {
+		for(let i = this.#listeners.length-1; i >= 0; --i) {
 			const l = this.#listeners[i];
 			l.fn.apply(l.ctx, args);
-			if(l.once) i -= this.off(l.fn);
+			if(l.once) this.off(l.fn);
 		}
 	}
 
 	public async async_emit(...args: Args): Promise<void> {
 		const arr: Promise<unknown>[] = [];
 
-		for(let i = 0; i < this.#listeners.length; ++i) {
+		for(let i = this.#listeners.length-1; i >= 0; --i) {
 			const l = this.#listeners[i];
 			arr.push(l.fn.apply(l.ctx, args));
-			if(l.once) i -= this.off(l.fn);
+			if(l.once) this.off(l.fn);
 		}
 
 		await Promise.all(arr);
 	}
 
 	public async await_emit(...args: Args): Promise<void> {
-		for(let i = 0; i < this.#listeners.length; ++i) {
+		for(let i = this.#listeners.length-1; i >= 0; --i) {
 			const l = this.#listeners[i];
 			await l.fn.apply(l.ctx, args);
-			if(l.once) i -= this.off(l.fn);
+			if(l.once) this.off(l.fn);
 		}
 	}
 
 	public *[Symbol.iterator](): Generator<EventListener<This, Args>, void, void> {
-		for(let i = 0; i < this.#listeners.length; i++) yield this.#listeners[i];
+		for(let i = this.#listeners.length-1; i >= 0; --i) yield this.#listeners[i];
 	}
 
 	public get [Symbol.toStringTag]() { return 'Event'; }

@@ -219,7 +219,7 @@ export const loadImage = (src: string, w?: number, h?: number): Promise<Image> =
 	const el = new Image(w, h);
 	el.src = src;
 	el.onload = e => res(el);
-	el.onerror = e => rej(e);
+	el.onerror = e => rej(new Error(`Image loading error (${src})`));
 });
 
 export const loadScript = (src: string, p: {

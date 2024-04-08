@@ -147,7 +147,7 @@ export class TouchesController extends EventDispatcher {
 	public isdblClick() { return this.touches.some(i => i.isdblClick()); }
 	public isTimeDown(time: number) { return this.touches.some(i => i.isTimeDown(time)); }
 
-	public findTouch(cb = (touch: Touch) => true) { return this.touches.find(t => t.isPress() && cb(t)) || null; }
+	public findTouch(cb = (touch: Touch) => touch.isPress()) { return this.touches.find(t => cb(t)) || null; }
 	public nullify(dt: number) { for(let i = 0; i < this.touches.length; i++) this.touches[i].nullify(dt); }
 
 

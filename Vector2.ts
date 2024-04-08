@@ -201,6 +201,7 @@ export class Vector2 {
 	public set angle(a: number) { this.rotate(a - this.angle); }
 	public get angle(): number { return Math.atan2(this[1], this[0]); }
 	public get module(): number { return Math.sqrt(this.moduleSq); }
+	public set module(v: number) { this.normalize(v); }
 	public get moduleSq(): number { return this[0]*this[0] + this[1]*this[1]; }
 
 	public dot(v: Vector2_t): number { return this[0]*v[0] + this[1]*v[1]; }
@@ -259,9 +260,9 @@ export class Vector2 {
 		return this;
 	}
 
-	public moveTime(v: Vector2_t, t: number = 1): this {
-		this[0] += (v[0]-this[0]) / (t!==0 ? t:1);
-		this[1] += (v[1]-this[1]) / (t!==0 ? t:1);
+	public moveTime(v: Vector2_t, tx: number = 1, ty = tx): this {
+		this[0] += (v[0]-this[0]) / (tx!==0 ? ty:1);
+		this[1] += (v[1]-this[1]) / (ty!==0 ? tx:1);
 
 		this._cb?.(this[0], this[1]);
 		return this;

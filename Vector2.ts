@@ -1,51 +1,100 @@
 export type Vector2_t = Vector2 | number[] | { 0: number, 1: number };
 
 
-type cb_t = (x: number, y: number) => any;
-type mat_t = { a: number, b: number, c: number, d: number, e?: number, f?: number };
+type cb = (vec: Vector2) => unknown;
+type ref = { 0: number, 1: number };
+type accessor = (n: number, i: 0 | 1) => number;
+type accessors = { get?: accessor | null, set?: accessor | null };
+type mat = { a: number, b: number, c: number, d: number, e?: number, f?: number };
 
 export class Vector2 {
-	public 0: number = 0;
-	public 1: number = 0;
-
 	public readonly length: number = 2;
-	private readonly _cb: cb_t | null = null;
+
+	readonly #cb: cb | null = null;
+	readonly #ref: ref = { 0: 0, 1: 0 };
+
+	#get: accessor | null = null;
+	#set: accessor | null = null;
 
 	constructor();
 	constructor(x: number, y: number);
-	constructor(x: number, y: number, cb: cb_t | null);
-	constructor(x: number = 0, y: number = 0, cb: cb_t | null = null) {
-		this[0] = x; this[1] = y;
-
-		this._cb = cb;
+	constructor(x: number, y: number, cb: cb | null);
+	constructor(ref: ref);
+	constructor(ref: ref, cb: cb | null);
+	constructor(...args: any[]) {
+		if(typeof args[0] === 'object') {
+			this.#ref = args[0];
+			this.#cb = args[1] || null;
+		} else {
+			this[0] = args[0] || 0; this[1] = args[1] || 0;
+			this.#cb = args[2] || null;
+		}
 
 		Object.defineProperty(this, 'length', { writable: false, enumerable: false, configurable: true });
-		Object.defineProperty(this, '_cb', { writable: false, enumerable: false, configurable: true });
 	}
+
+	public get 0(): number { return this.#get?.(this.#ref[0], 0) ?? this.#ref[0]; }
+	public set 0(v: number) { this.#ref[0] = this.#set?.(v, 0) ?? v; }
+	public get 1(): number { return this.#get?.(this.#ref[1], 1) ?? this.#ref[1]; }
+	public set 1(v: number) { this.#ref[1] = this.#set?.(v, 1) ?? v; }
+
+	public apply(): this;
+	public apply(v: Vector2_t): this;
+	public apply(x: number, y?: number): this;
+	public apply(...args: any[]): this {
+		if(args.length === 1) {
+			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = args[0][i]; }
+			else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = args[0]; }
+		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = +args[i] || 0; }
+
+		return this;
+	}
+
 
 	public get x(): number { return this[0]; }
 	public set x(v: number) {
 		this[0] = v;
-		this._cb?.(this[0], this[1]);
+		this.#cb?.(this);
 	}
 	public get y(): number { return this[1]; }
 	public set y(v: number) {
 		this[1] = v;
-		this._cb?.(this[0], this[1]);
+		this.#cb?.(this);
 	}
 
+	/** @deprecated use Vector2.new() */
 	public buf(): Vector2 { return new Vector2(this[0], this[1]); }
+
+	public new(cb: cb | null = null): Vector2 { return new Vector2(this[0], this[1], cb); }
+
+	public ref(cb: cb | null = null): Vector2 {
+		return new Vector2(this, vec => {
+			this.#cb?.(this);
+			cb?.(vec);
+		});
+	}
+
+	public accessors(): accessors;
+	public accessors(accessors: accessors): this;
+	public accessors(accessors?: accessors): accessors | this {
+		if(!accessors) return { get: this.#get, set: this.#set };
+
+		this.#get = accessors.get === null ? null : accessors.get || this.#get;
+		this.#set = accessors.set === null ? null : accessors.set || this.#set;
+
+		return this;
+	}
 
 	public set(): this;
 	public set(v: Vector2_t): this;
 	public set(x: number, y?: number): this;
 	public set(...args: any[]): this {
 		if(args.length === 1) {
-			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) (this as any)[i] = args[0][i]; }
-			else { for(let i = 0; i < this.length; ++i) (this as any)[i] = args[0]; }
-		} else { for(let i = 0; i < this.length; ++i) (this as any)[i] = args[i] || 0; }
+			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = args[0][i]; }
+			else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = args[0]; }
+		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = +args[i] || 0; }
 
-		this._cb?.(this[0], this[1]);
+		this.#cb?.(this);
 		return this;
 	}
 
@@ -53,11 +102,11 @@ export class Vector2 {
 	public add(x: number, y?: number): this;
 	public add(...args: any[]): this {
 		if(args.length === 1) {
-			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) (this as any)[i] += args[0][i]; }
-			else { for(let i = 0; i < this.length; ++i) (this as any)[i] += args[0]; }
-		} else { for(let i = 0; i < this.length; ++i) (this as any)[i] += +args[i] ?? 0; }
+			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] += args[0][i]; }
+			else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] += args[0]; }
+		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] += +args[i] || 0; }
 
-		this._cb?.(this[0], this[1]);
+		this.#cb?.(this);
 		return this;
 	}
 
@@ -65,11 +114,11 @@ export class Vector2 {
 	public sub(x: number, y?: number): this;
 	public sub(...args: any[]): this {
 		if(args.length === 1) {
-			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) (this as any)[i] -= args[0][i]; }
-			else { for(let i = 0; i < this.length; ++i) (this as any)[i] -= args[0]; }
-		} else { for(let i = 0; i < this.length; ++i) (this as any)[i] -= +args[i] ?? 0; }
+			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] -= args[0][i]; }
+			else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] -= args[0]; }
+		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] -= +args[i] || 0; }
 
-		this._cb?.(this[0], this[1]);
+		this.#cb?.(this);
 		return this;
 	}
 
@@ -77,11 +126,11 @@ export class Vector2 {
 	public inc(x: number, y?: number): this;
 	public inc(...args: any[]): this {
 		if(args.length === 1) {
-			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) (this as any)[i] *= args[0][i]; }
-			else { for(let i = 0; i < this.length; ++i) (this as any)[i] *= args[0]; }
-		} else { for(let i = 0; i < this.length; ++i) (this as any)[i] *= +args[i] ?? 1; }
+			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] *= args[0][i]; }
+			else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] *= args[0]; }
+		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] *= +args[i] ?? 1; }
 
-		this._cb?.(this[0], this[1]);
+		this.#cb?.(this);
 		return this;
 	}
 
@@ -89,11 +138,11 @@ export class Vector2 {
 	public div(x: number, y?: number): this;
 	public div(...args: any[]): this {
 		if(args.length === 1) {
-			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) (this as any)[i] /= args[0][i]; }
-			else { for(let i = 0; i < this.length; ++i) (this as any)[i] /= args[0]; }
-		} else { for(let i = 0; i < this.length; ++i) (this as any)[i] /= +args[i] ?? 1; }
+			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] /= args[0][i]; }
+			else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] /= args[0]; }
+		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] /= +args[i] ?? 1; }
 
-		this._cb?.(this[0], this[1]);
+		this.#cb?.(this);
 		return this;
 	}
 
@@ -101,11 +150,11 @@ export class Vector2 {
 	public pow(x: number, y?: number): this;
 	public pow(...args: any[]): this {
 		if(args.length === 1) {
-			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) (this as any)[i] **= args[0][i]; }
-			else { for(let i = 0; i < this.length; ++i) (this as any)[i] **= args[0]; }
-		} else { for(let i = 0; i < this.length; ++i) (this as any)[i] **= +args[i] ?? 1; }
+			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] **= args[0][i]; }
+			else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] **= args[0]; }
+		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] **= +args[i] ?? 1; }
 
-		this._cb?.(this[0], this[1]);
+		this.#cb?.(this);
 		return this;
 	}
 
@@ -113,77 +162,91 @@ export class Vector2 {
 	public mod(x: number, y?: number): this;
 	public mod(...args: any[]): this {
 		if(args.length === 1) {
-			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) (this as any)[i] %= args[0][i]; }
-			else { for(let i = 0; i < this.length; ++i) (this as any)[i] %= args[0]; }
-		} else { for(let i = 0; i < this.length; ++i) (this as any)[i] %= +args[i] ?? 0; }
+			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] %= args[0][i]; }
+			else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] %= args[0]; }
+		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] %= +args[i] ?? 1; }
 
-		this._cb?.(this[0], this[1]);
+		this.#cb?.(this);
 		return this;
 	}
 
 	public abs(): this {
-		for(let i = 0; i < this.length; ++i) (this as any)[i] = Math.abs((this as any)[i]);
+		for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = Math.abs(this[i as 0 | 1]);
 
-		this._cb?.(this[0], this[1]);
+		this.#cb?.(this);
 		return this;
 	}
 
 	public invert(): this {
-		for(let i = 0; i < this.length; ++i) (this as any)[i] = -(this as any)[i];
+		for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = -this[i as 0 | 1];
 
-		this._cb?.(this[0], this[1]);
+		this.#cb?.(this);
 		return this;
 	}
 
 	public inverse(a: number = 1): this {
-		for(let i = 0; i < this.length; ++i) (this as any)[i] = a/(this as any)[i];
+		for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = a/this[i as 0 | 1];
 
-		this._cb?.(this[0], this[1]);
+		this.#cb?.(this);
 		return this;
 	}
 
 	public floor(a: number = 1): this {
-		for(let i = 0; i < this.length; ++i) (this as any)[i] = Math.floor((this as any)[i]*a)/a;
+		for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = Math.floor(this[i as 0 | 1]*a)/a;
 
-		this._cb?.(this[0], this[1]);
+		this.#cb?.(this);
 		return this;
 	}
 
 	public round(a: number = 1): this {
-		for(let i = 0; i < this.length; ++i) (this as any)[i] = Math.round((this as any)[i]*a)/a;
+		for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = Math.round(this[i as 0 | 1]*a)/a;
 
-		this._cb?.(this[0], this[1]);
+		this.#cb?.(this);
 		return this;
 	}
 
 	public ceil(a: number = 1): this {
-		for(let i = 0; i < this.length; ++i) (this as any)[i] = Math.ceil((this as any)[i]*a)/a;
+		for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = Math.ceil(this[i as 0 | 1]*a)/a;
 
-		this._cb?.(this[0], this[1]);
+		this.#cb?.(this);
 		return this;
 	}
 
 	public floorToZero(a: number = 1): this {
 		for(let i = 0; i < this.length; ++i) {
-			(this as any)[i] = Math.floor(Math.abs((this as any)[i] * a)) * Math.sign((this as any)[i]) / a;
+			this[i as 0 | 1] = Math.floor(Math.abs(this[i as 0 | 1] * a)) * Math.sign(this[i as 0 | 1]) / a;
 		}
 
-		this._cb?.(this[0], this[1]);
+		this.#cb?.(this);
 		return this;
 	}
 
 	public ceilToZero(a: number = 1): this {
 		for(let i = 0; i < this.length; ++i) {
-			(this as any)[i] = Math.ceil(Math.abs((this as any)[i] * a)) * Math.sign((this as any)[i]) / a;
+			this[i as 0 | 1] = Math.ceil(Math.abs(this[i as 0 | 1] * a)) * Math.sign(this[i as 0 | 1]) / a;
 		}
 
-		this._cb?.(this[0], this[1]);
+		this.#cb?.(this);
 		return this;
 	}
 
 	public isSame(v: Vector2_t): boolean {
 		for(let i = 0; i < this.length; ++i) {
-			if((this as any)[i] !== (v as any)[i]) return false;
+			if(this[i as 0 | 1] !== v[i as 0 | 1]) return false;
+		}
+		return true;
+	}
+
+	public isNaN(): boolean {
+		for(let i = 0; i < this.length; ++i) {
+			if(Number.isNaN(this[i as 0 | 1])) return false;
+		}
+		return true;
+	}
+
+	public isFinite(): boolean {
+		for(let i = 0; i < this.length; ++i) {
+			if(Number.isFinite(this[i as 0 | 1])) return false;
 		}
 		return true;
 	}
@@ -194,7 +257,7 @@ export class Vector2 {
 		this[1] = this[0]*sin + this[1]*cos;
 		this[0] = x;
 
-		this._cb?.(this[0], this[1]);
+		this.#cb?.(this);
 		return this;
 	}
 
@@ -211,31 +274,39 @@ export class Vector2 {
 		const c: number = (this[0]*v[0] + this[1]*v[1]) / (v[0]*v[0] + v[1]*v[1]);
 		this[0] = v[0]*c; this[1] = v[1]*c;
 
-		this._cb?.(this[0], this[1]);
+		this.#cb?.(this);
 		return this;
 	}
 
 	public normalize(a: number = 1): this {
 		const l: number = this.module/a;
-		for(let i = 0; i < this.length; ++i) (this as any)[i] /= l;
+		for(let i = 0; i < this.length; ++i) this[i as 0 | 1] /= l;
 
-		this._cb?.(this[0], this[1]);
+		this.#cb?.(this);
 		return this;
 	}
 
-	//@ts-ignore
-	public transform(mat: mat_t): this;
+	public normal(dir: number = 1): this {
+		const x = this[1] * (dir > 0 ? -1 : 1);
+		this[1] = this[0] * (dir < 0 ? -1 : 1);
+		this[0] = x;
+
+		this.#cb?.(this);
+		return this;
+	}
+
+	public transform(mat: mat): this;
 	public transform(a: number, b: number, c: number, d: number, e?: number, f?: number): this;
-	public transform(a: number | mat_t, b: number, c: number, d: number, e: number, f: number): this {
+	public transform(a: number | mat, b?: number, c?: number, d?: number, e?: number, f?: number): this {
 		if(typeof a === 'object') {
 			this[0] = this[0]*a.a + this[1]*a.b + (a.e || 0);
 			this[1] = this[0]*a.c + this[1]*a.d + (a.f || 0);
 		} else {
-			this[0] = this[0]*a + this[1]*b + (e || 0);
-			this[1] = this[0]*c + this[1]*d + (f || 0);
+			this[0] = this[0]*a! + this[1]*b! + (e! || 0);
+			this[1] = this[0]*c! + this[1]*d! + (f! || 0);
 		}
 
-		this._cb?.(this[0], this[1]);
+		this.#cb?.(this);
 		return this;
 	}
 
@@ -246,7 +317,7 @@ export class Vector2 {
 		this[0] += mv*Math.cos(a);
 		this[1] += mv*Math.sin(a);
 
-		this._cb?.(this[0], this[1]);
+		this.#cb?.(this);
 		return this;
 	}
 
@@ -256,7 +327,7 @@ export class Vector2 {
 		this[0] += (t ? (mvx > Math.abs(v[0]-this[0]) ? v[0]-this[0]: mvx): mvx);
 		this[1] += (t ? (mvy > Math.abs(v[1]-this[1]) ? v[1]-this[1]: mvy): mvy);
 
-		this._cb?.(this[0], this[1]);
+		this.#cb?.(this);
 		return this;
 	}
 
@@ -264,7 +335,7 @@ export class Vector2 {
 		this[0] += (v[0]-this[0]) / (tx!==0 ? ty:1);
 		this[1] += (v[1]-this[1]) / (ty!==0 ? tx:1);
 
-		this._cb?.(this[0], this[1]);
+		this.#cb?.(this);
 		return this;
 	}
 
@@ -283,11 +354,18 @@ export class Vector2 {
 	}
 
 
-	public static from(v: { x: number, y: number } | Vector2_t): Vector2 {
+	public static from(v: { x: number, y: number } | Vector2_t, cb: cb | null = null): Vector2 {
 		//@ts-ignore
-		return new Vector2(v.x ?? v[0], v.y ?? v[1]);
+		return new Vector2(v.x ?? v[0], v.y ?? v[1], cb);
 	}
 
+	public static zero() { return new Vector2(); }
+	public static one() { return new Vector2(1, 1); }
+
+	public static left() { return new Vector2(-1, 0); }
+	public static right() { return new Vector2(1, 0); }
+	public static up() { return new Vector2(0, -1); }
+	public static down() { return new Vector2(0, 1); }
 
 	public static readonly ZERO = Object.freeze(new Vector2()) as Vector2;
 	public static readonly ONE = Object.freeze(new Vector2(1, 1)) as Vector2;
@@ -297,17 +375,29 @@ export class Vector2 {
 	public static readonly UP = Object.freeze(new Vector2(0, -1)) as Vector2;
 	public static readonly DOWN = Object.freeze(new Vector2(0, 1)) as Vector2;
 
-	public toString(fractionDigits?: number): string { return `Vector2(${this[0].toFixed(fractionDigits)}, ${this[1].toFixed(fractionDigits)})`; }
-	public [Symbol.toPrimitive](): string { return this.toString(); }
-	public *[Symbol.iterator](): Generator<number, void, void> { yield this[0]; yield this[1]; }
+	public static isNaN(v: Vector2_t) { return Number.isNaN(v[0]) || Number.isNaN(v[1]); }
+	public static isFinite(v: Vector2_t) { return Number.isFinite(v[0]) || Number.isFinite(v[1]); }
+
+	public toString(fractionDigits: number = 2, min = true): string {
+		return `${min ? '':'Vector2('}${this[0].toFixed(fractionDigits)}, ${this[1].toFixed(fractionDigits)}${min ? '' : ')'}`;
+	}
+
+	public *[Symbol.iterator](): Generator<number, void, void> {
+		for(let i = 0; i < this.length; i++) yield this[i as 0 | 1];
+	}
 
 	public get [Symbol.toStringTag]() { return 'Vector2'; }
+	public [Symbol.toPrimitive](): string { return this.toString(); }
 }
+
+Object.defineProperty(Vector2.prototype, 0, { enumerable: true });
+Object.defineProperty(Vector2.prototype, 1, { enumerable: true });
+
 
 export const vec2: {
 	(): Vector2;
 	(x: number, y: number): Vector2;
-	(x: number, y: number, cb: cb_t | null): Vector2;
+	(x: number, y: number, cb: cb | null): Vector2;
 	//@ts-ignore
 } = (...args: any[]): Vector2 => new Vector2(...args);
 
@@ -315,19 +405,19 @@ export const vec2: {
 export class Vector2Cached extends Vector2 {
 	private _a_angle: boolean = true;
 	private _angle: number = super.angle;
-	public get angle() { return this._a_angle ? this._angle : this._angle = super.angle; }
+	public override get angle() { return this._a_angle ? this._angle : this._angle = super.angle; }
 
 	private _a_module: boolean = true;
 	private _module: number = super.module;
-	public get module() { return this._a_module ? this._module : this._module = super.module; }
+	public override get module() { return this._a_module ? this._module : this._module = super.module; }
 
 	constructor();
 	constructor(x: number, y: number);
-	constructor(x: number, y: number, cb: cb_t | null);
-	constructor(x: number = 0, y: number = 0, cb: cb_t | null = null) {
-		super(x, y, (x, y) => {
+	constructor(x: number, y: number, cb: cb | null);
+	constructor(x: number = 0, y: number = 0, cb: cb | null = null) {
+		super(x, y, vec => {
 			this._a_angle = this._a_module = false;
-			cb?.(x, y);
+			return cb?.(vec);
 		});
 	}
 }

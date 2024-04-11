@@ -28,10 +28,10 @@ export class DataMapTextures<
 	public getIndex(x: number, y: number): number { return x + y * this.width; }
 
 	public getClampedCoord(i: number): [number, number] {
-		i = Math.clamped(0, i, this.width * this.height - 1);
+		i = Math.clamp(0, i, this.width * this.height - 1);
 		return [i % this.width, Math.floor(i / this.width)];
 	}
 	public getClampedIndex(x: number, y: number): number {
-		return Math.clamped(0, x, this.width) + Math.clamped(0, y, this.height) * this.width;
+		return Math.clamp(0, x, this.width) + Math.clamp(0, y, this.height) * this.width;
 	}
 }

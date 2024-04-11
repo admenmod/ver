@@ -62,14 +62,14 @@ export class KeymapperOfActions extends EventDispatcher {
 	public '@enable' = new Event<KeymapperOfActions, []>(this);
 	public '@disable' = new Event<KeymapperOfActions, []>(this);
 
-	public '@newmode' = new Event<KeymapperOfActions, [mode_t, MappingsMode]>(this);
-	public '@changemode' = new Event<KeymapperOfActions, [mode_t, MappingsMode]>(this);
-	public '@register' = new Event<KeymapperOfActions, [mode_t | 0, mapping_t, action_t]>(this);
+	public '@newmode' = new Event<KeymapperOfActions, [mode: MappingsMode]>(this);
+	public '@changemode' = new Event<KeymapperOfActions, [mode: MappingsMode]>(this);
+	public '@register' = new Event<KeymapperOfActions, [mapping: mapping_t, action: action_t]>(this);
 
 	protected _keyboardInputInterceptor!: KeyboardInputInterceptor;
 	public get keyboardInputInterceptor() { return this._keyboardInputInterceptor; }
 
-	private mode: mode_t | null = null;
+	public get mode(): mode_t | null { return this.cmaps?.mode ?? null; }
 	public mapmap: Record<mode_t, MappingsMode> = Object.create(null);
 
 	public gmaps: MappingsMode = new MappingsMode(KeymapperOfActions.GLOBAL_MODE, () => false);
@@ -112,7 +112,7 @@ export class KeymapperOfActions extends EventDispatcher {
 		this.emit('disable');
 	}
 
-	public init(this: KeymapperOfActions, keyboardInputInterceptor: KeyboardInputInterceptor): void {
+	public init(keyboardInputInterceptor: KeyboardInputInterceptor): this {
 		this._keyboardInputInterceptor = keyboardInputInterceptor;
 
 		this.handler = e => {
@@ -154,7 +154,9 @@ export class KeymapperOfActions extends EventDispatcher {
 
 		this._keyboardInputInterceptor.on('keydown:input', this.handler);
 
-		this.emit('init');
+		this['@init'].emit();
+
+		return this;
 	}
 
 	public destroy(this: KeymapperOfActions): void {
@@ -165,7 +167,7 @@ export class KeymapperOfActions extends EventDispatcher {
 		this.emit('disable');
 	}
 
-	public register(this: KeymapperOfActions, mode: mode_t | 0, mapping: mapping_t, action: action_t): void {
+	public register(this: KeymapperOfActions, mode: mode_t, mapping: mapping_t, action: action_t): void {
 		if(mode !== 0 && !this.mapmap[mode] || !mapping.length) return;
 
 		let maps: MappingsMode;
@@ -174,30 +176,28 @@ export class KeymapperOfActions extends EventDispatcher {
 
 		maps.register(mapping, action);
 
-		this.emit('register', mode, mapping, action);
+		this.emit('register', mapping, action);
 	}
 
 	public getMode(mode: mode_t) { return this.mapmap[mode]; }
 
 	public setMode(this: KeymapperOfActions, mode: mode_t | MappingsMode) {
 		if(typeof mode === 'object') {
-			this.mapmap[mode.mode] = mode;
+			if(!this.mapmap[mode.mode]) {
+				this.mapmap[mode.mode] = mode;
+				this.emit('newmode', this.mapmap[mode.mode]);
+			}
 
-			this.emit('newmode', mode.mode, mode);
-
-			this.mode = mode.mode;
 			this.cmaps = mode;
+			this.emit('changemode', mode);
+		} else {
+			if(!this.mapmap[mode]) {
+				this.mapmap[mode] = new MappingsMode(mode);
+				this.emit('newmode', this.mapmap[mode]);
+			}
 
-			this.emit('changemode', mode.mode, mode);
-		} else if(!this.mapmap[mode]) {
-			this.mapmap[mode] = new MappingsMode(mode);
-
-			this.emit('newmode', mode, this.mapmap[mode]);
-
-			this.mode = mode;
-			this.cmaps = this.mapmap[this.mode];
-
-			this.emit('changemode', mode, this.mapmap[mode]);
+			this.cmaps = this.mapmap[mode];
+			this.emit('changemode', this.mapmap[mode]);
 		}
 	}
 

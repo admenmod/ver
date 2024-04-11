@@ -1,4 +1,4 @@
-export type Fn<T = any, A extends any[] = any[], R = any> = (this: T, ...args: A) => R;
+export type Fn<T = any, A extends any[] | readonly any[] = any, R = any> = (this: T, ...args: A) => R;
 export declare namespace Fn {
 	type T<F extends Fn> = F extends Fn<infer T, any, any> ? T : never;
 	type A<F extends Fn> = F extends Fn<any, infer A, any> ? A : never;
@@ -65,6 +65,58 @@ export const tag = Object.freeze({
 	}
 });
 
+export const Fn = (fn: Fn) => {
+	const name = fn.name;
+	let str = fn.toString();
+
+	const r = { fn, str, name, async: false, generator: false } as {
+		fn: Fn;
+		str: string;
+		type: 'arrow' | 'method' | 'function';
+		expname: string;
+		name: string;
+		code: string;
+		async: boolean;
+		generator: boolean;
+		arguments: string;
+	};
+
+	r.async = str.startsWith('async ');
+	if(r.async) str = str.replace(regexp`^async\s+`(), '');
+
+	if(str.startsWith('function')) {
+		r.type = 'function';
+
+		const data = regexp`^function(\*?) ?(\w*?)\((.*?)\)\s*\{(.*)\}$`('s').exec(str)!;
+		if(!data) throw new Error(`parse ${r.type} [${fn.toString()}]`);
+
+		r.generator = Boolean(data[1]);
+		r.expname = data[2];
+		r.arguments = data[3];
+		r.code = data[4];
+	} else if(~str.search(fn.length === 1 ? regexp`^\(?\w+\)?`() : regexp`^\(.*?\)`())) {
+		r.type = 'arrow';
+
+		const data = regexp`^\(?(.*?)\)?\s*=>\s*\{?(.*?)\}?$`('s').exec(str)!;
+		if(!data) throw new Error(`parse ${r.type} [${fn.toString()}]`);
+
+		r.arguments = data[1];
+		r.code = data[2];
+	} else {
+		r.type = 'method';
+
+		const data = regexp`^(\*?)(.+)\((.*?)\)\s*\{(.*)\}$`('s').exec(str)!;
+		if(!data) throw new Error(`parse ${r.type} [${fn.toString()}]`);
+
+		r.generator = Boolean(data[1]);
+		r.expname = data[2];
+		r.arguments = data[3];
+		r.code = data[4];
+	}
+
+	return r;
+};
+
 
 interface IMath extends Math {
 	INF: number;
@@ -74,7 +126,7 @@ interface IMath extends Math {
 	randomInt(a: number, b: number): number;
 	randomFloat(a: number, b: number): number;
 	mod(x: number, min?: number, max?: number): number;
-	clamped(min: number, x: number, max: number): number;
+	clamp(min: number, x: number, max: number): number;
 	floorToZero(x: number): number;
 	ceilToZero(x: number): number;
 }
@@ -98,7 +150,7 @@ for(const id of Object.getOwnPropertyNames(Math)) (math as any)[id] = (Math as a
 	return min + offset;
 };
 
-(math as IMath).clamped = (min: number, x: number, max: number): number => x < min ? min : x > max ? max : x;
+(math as IMath).clamp = (min: number, x: number, max: number): number => x < min ? min : x > max ? max : x;
 
 (math as IMath).floorToZero = (x: number) => math.floor(math.abs(x)) * Math.sign(x);
 (math as IMath).ceilToZero = (x: number) => math.ceil(math.abs(x)) * Math.sign(x);
@@ -121,16 +173,13 @@ export function delay<F extends Fn>(time: number = 0, cb?: F, ctx?: Fn.T<F>, ...
 export function* prototype_chain(o: any, to: any = null, incl: boolean = true): Generator<any> {
 	let p = o;
 	if(incl) while(p !== to && (p = Object.getPrototypeOf(p))) yield p;
-	else while(p = Object.getPrototypeOf(p)) {
-		if(p === to) break;
-		yield p;
-	}
+	else while((p = Object.getPrototypeOf(p)) && p !== to) yield p;
 }
 
 export function* constructor_chain(o: any, to: any = null, incl: boolean = true): Generator<any> {
-	if(!o.constructor) return;
+	if(!o?.constructor) return;
 
-	for(const c of prototype_chain(o, to.prototype, incl)) {
+	for(const c of prototype_chain(o, to?.prototype || null, incl)) {
 		hasOwnProperty.call(c, 'constructor') ? yield c.constructor : null;
 	}
 }
@@ -218,8 +267,8 @@ export const generateImage: generateImage_t = (w, h, cb, p?: ImageEncodeOptions)
 export const loadImage = (src: string, w?: number, h?: number): Promise<Image> => new Promise((res, rej) => {
 	const el = new Image(w, h);
 	el.src = src;
-	el.onload = e => res(el);
-	el.onerror = e => rej(new Error(`Image loading error (${src})`));
+	el.onload = () => res(el);
+	el.onerror = () => rej(new Error(`Image loading error (${src})`));
 });
 
 export const loadScript = (src: string, p: {

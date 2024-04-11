@@ -183,10 +183,10 @@ export namespace MapParser {
 		}
 	}
 
-	export class BaseLayer extends EventDispatcher implements IBaseLayer {
+	export abstract class BaseLayer extends EventDispatcher implements IBaseLayer {
 		public readonly id: number;
 		public readonly name: string;
-		public readonly type: string;
+		public abstract readonly type: string;
 
 		public readonly visible: boolean;
 		public readonly opacity: number;
@@ -196,12 +196,11 @@ export namespace MapParser {
 		public readonly offset: Readonly<Vector2>;
 
 
-		constructor(o: IBaseLayer) {
+		protected constructor(o: IBaseLayer) {
 			super();
 
 			this.id = o.id;
 			this.name = o.name;
-			this.type = o.type;
 
 			this.visible = o.visible;
 			this.opacity = o.opacity;

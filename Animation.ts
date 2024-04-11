@@ -109,6 +109,8 @@ export class Animation<const Args extends any[] = never> extends EventDispatcher
 
 		this['@reset'].emit(this.generator, prev_generator);
 
+		this.#args = void 0;
+
 		return this;
 	}
 
@@ -143,6 +145,8 @@ export class Animation<const Args extends any[] = never> extends EventDispatcher
 			const { done, value } = this.iterator.next(delta);
 
 			if(done) {
+				this['@tick'].emit();
+
 				this._numberOfPlayed++;
 				this['@done'].emit();
 
@@ -160,7 +164,7 @@ export class Animation<const Args extends any[] = never> extends EventDispatcher
 			this.time = value;
 
 			if(this.isTimeSync) {
-				if(!value || value < this.MIN_TIME) throw new Error('The time cannot be zero or less Animation.MIN_TIME');
+				if(value < 0 || value < this.MIN_TIME) throw new Error('The time cannot be zero or less MIN_TIME');
 
 				if(this.dt >= value) {
 					delta = 0;

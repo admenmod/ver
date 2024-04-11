@@ -144,21 +144,21 @@ export class EventListener<This = any, Args extends any[] = any[]> {
 export declare namespace Event {
 	export type name<T extends string = string> = `@${T}`;
 
-	export type getKeysOf<T extends object> = ({
+	export type getKeysOf<T> = ({
 		[K in keyof T]: K extends name ? T[K] extends Event ? K : never : never
 	})[keyof T];
 
-	export type KeysOf<T extends object> = ConvertDel<({
+	export type KeysOf<T> = ConvertDel<{
 		[K in keyof T]: K extends name ? T[K] extends Event ? K : never : never
-	})[keyof T]>;
+	}[keyof T]>;
 
-	export type getArgs<T extends object, K extends getKeysOf<T>> =
+	export type getArgs<T, K extends getKeysOf<T>> =
 		T[K] extends Event<any, infer A> ? A : never;
 
 	export type ConvertDel<U extends name> = U extends name<infer R> ? R : never;
 	export type ConvertAdd<U extends string> = name<U>;
 
-	export type Args<T extends object, Type extends ConvertDel<getKeysOf<T>>> =
+	export type Args<T, Type extends ConvertDel<getKeysOf<T>>> =
 		getArgs<T, ConvertAdd<Type> extends getKeysOf<T> ? ConvertAdd<Type> : never>;
 }
 
@@ -243,13 +243,17 @@ export declare namespace Notification {
 
 	export type static<T extends Notification> = (...args: Notification.Args<T>) => any;
 
-	export type KeysOf<T extends object> = ({
+	export type KeysOf<T extends object> = {
 		[K in keyof T]: T[K] extends Notification ? K : never;
-	})[keyof T];
+	}[keyof T];
 
 	export type ArgsOf<T extends object, K extends KeysOf<T>> =
 		//@ts-ignore
 		T[K] extends Notification<infer Class, infer Name> ? Fn.A<Class[Name]> : never;
+
+	export type Constants<T> = T[keyof {
+		[K in keyof T as K extends `NOTIFICATION_${string}` ? K : never]: T[K];
+	}];
 }
 
 export class Notification<
@@ -271,7 +275,6 @@ export class Notification<
 
 		const reverse = this.reverse;
 		const arr: any[] = [this.constructor];
-
 
 		let c = this.constructor;
 		while(c !== this.Class && (c = Object.getPrototypeOf(c.prototype)?.constructor)) {

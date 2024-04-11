@@ -3,11 +3,21 @@ import { Event, EventDispatcher } from './events.js';
 
 
 export class Viewport<T extends CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D = OffscreenCanvasRenderingContext2D> extends EventDispatcher {
+	public '@move' = new Event<Viewport<T>, [position: Vector2]>(this);
+	public '@scale' = new Event<Viewport<T>, [scale: Vector2]>(this);
 	public '@resize' = new Event<Viewport<T>, [size: Vector2]>(this);
 
 
-	public readonly position = new Vector2();
-	public readonly scale: Vector2 = new Vector2(1, 1, () => (this.draw_distance = this.size.buf().inc(this.scale).div(2).module));
+	public readonly position = new Vector2(0, 0, vec => this['@move'].emit(vec));
+	public readonly scale = new Vector2(1, 1, vec => {
+		this.draw_distance = this.size.new().inc(this.scale).div(2).module;
+		this['@scale'].emit(vec);
+	});
+	public readonly size = new Vector2(1, 1, vec => {
+		this.draw_distance = this.size.new().inc(this.scale).div(2).module;
+		if(this.auto_scale_pixel_ratio) this.scalePixelRatio();
+		this['@resize'].emit(vec);
+	});
 
 	protected _rotation: number = 0;
 	public get rotation(): number { return this._rotation; }
@@ -16,18 +26,14 @@ export class Viewport<T extends CanvasRenderingContext2D | OffscreenCanvasRender
 	public readonly offset = new Vector2();
 	public readonly pivot_offset = new Vector2();
 
-	public readonly size: Vector2;
 	public draw_distance: number = 0;
-
 	public isCentered: boolean = true;
+	public auto_scale_pixel_ratio: boolean = true;
 
-	constructor(public ctx: T) {
+	constructor(public ctx: T, public pixelRatio: number = window.devicePixelRatio || 1) {
 		super();
 
-		this.size = new Vector2(ctx.canvas.width, ctx.canvas.height, (x, y) => {
-			this.draw_distance = this.size.buf().inc(this.scale).div(2).module;
-			this['@resize'].emit(this.size.buf());
-		});
+		this.size.set(this.ctx.canvas.width, this.ctx.canvas.height);
 	}
 
 	public isInViewport(position: Vector2, draw_distance: number): boolean {
@@ -66,6 +72,11 @@ export class Viewport<T extends CanvasRenderingContext2D | OffscreenCanvasRender
 		return v;
 	}
 
+	public scalePixelRatio(): void {
+		this.ctx.resetTransform();
+		this.ctx.scale(this.pixelRatio, this.pixelRatio);
+	}
+
 	public clear(): void {
 		this.ctx.clearRect(this.offset.x, this.offset.y, this.size.x, this.size.y);
 	}
@@ -94,5 +105,5 @@ export class Viewport<T extends CanvasRenderingContext2D | OffscreenCanvasRender
 	public get vmax() { return Math.max(this.size.x, this.size.y) / 100; }
 	public get vmin() { return Math.min(this.size.x, this.size.y) / 100; }
 
-	public get [Symbol.toStringTag]() { return 'Viewport' as const; }
+	public get [Symbol.toStringTag]() { return 'Viewport'; }
 }

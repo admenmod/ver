@@ -28,11 +28,7 @@ interface codeShell {
 		insulate?: boolean;
 		source?: string;
 	}): T;
-
-	from: (code: (...args: any[]) => any) => string;
 }
 
 export let codeShell: codeShell = (globalThis as any).codeShell as codeShell;
 delete (globalThis as any).codeShell;
-
-codeShell.from = code => code.toString().replace(/^function.+?\{(.*)\}$/s, '$1');

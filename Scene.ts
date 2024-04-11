@@ -69,7 +69,7 @@ export class Scene extends EventDispatcher {
 		await this['@destroy'].await_emit();
 		await this._destroy();
 
-		await Promise.all([...this.children()].map(s => s.destroy()));
+		await Promise.all([...this.children(false)].map(s => s.destroy()));
 		this._children.length = 0;
 
 		this._isDestroyed = true;
@@ -333,7 +333,7 @@ export class Scene extends EventDispatcher {
 		if(!r) {
 			for(const id in this._tree) yield this._tree[id];
 		} else {
-			for(const s of this.children()) {
+			for(const s of this.children(false)) {
 				yield s;
 				yield* s.children(true);
 			}
@@ -344,7 +344,7 @@ export class Scene extends EventDispatcher {
 		if(!r) {
 			for(let i = 0; i < this._children.length; i++) yield this._children[i];
 		} else {
-			for(const s of this.children()) {
+			for(const s of this.children(false)) {
 				yield s;
 				yield* s.children(true);
 			}

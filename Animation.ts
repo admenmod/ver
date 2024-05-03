@@ -10,7 +10,7 @@ export declare namespace Animation {
 	export type ArgsOfAnimation<T extends Animation<any>> = T extends Animation<infer A> ? A : never;
 	export type ArgsOfGenerator<T extends Animation.Generator<any>> = T extends Animation.Generator<infer A> ? A : never;
 }
-export class Animation<const Args extends any[] = never> extends EventDispatcher {
+export class Animation<const Args extends any[] = never> extends EventDispatcher implements PromiseLike<void> {
 	public static readonly MIN_TIME: number = 5;
 
 	public '@play' = new Event<Animation<Args>, []>(this);
@@ -74,7 +74,7 @@ export class Animation<const Args extends any[] = never> extends EventDispatcher
 	}
 
 	#args?: Args;
-	public run(...args: Args): Promise<this> {
+	public run(...args: Args): this {
 		if(this.iterator || !this.done || this._isPlaying) throw new Error('animation not completed');
 
 		this.iterator = this.generator.apply(this, args);
@@ -90,7 +90,7 @@ export class Animation<const Args extends any[] = never> extends EventDispatcher
 
 		this.#args = args;
 
-		return new Promise<this>(res => this['@done'].once(() => res(this)));
+		return this;
 	}
 
 	public reset(generator?: Animation.Generator<Args>): this {
@@ -176,5 +176,14 @@ export class Animation<const Args extends any[] = never> extends EventDispatcher
 
 			return;
 		}
+	}
+
+
+	public then<T1 = void, T2 = never>(
+		onfulfilled?: (() => T1 | PromiseLike<T1>) | null,
+		onrejected?: ((reason: any) => T2 | PromiseLike<T2>) | null
+	): Promise<T1 | T2> {
+		if(!this.iterator || this.done) return Promise.resolve().then(onfulfilled, onrejected);
+		return new Promise<void>(res => this['@end'].once(() => res())).then(onfulfilled, onrejected);
 	}
 }

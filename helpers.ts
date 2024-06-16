@@ -238,11 +238,14 @@ type Image = HTMLImageElement;
 
 type cb_t = (ctx: OffscreenCanvasRenderingContext2D, w: number, h: number) => void;
 
-type generateImage_t = ((w: number, h: number, cb: cb_t) => Promise<Image>) & {
+interface generateImage_t {
+	(w: number, h: number, cb: cb_t, p?: ImageEncodeOptions, isBlob?: false): Promise<Image>;
+	(w: number, h: number, cb: cb_t, p: ImageEncodeOptions, isBlob: true): Promise<Blob>;
 	canvas?: OffscreenCanvas;
 };
 
-export const generateImage: generateImage_t = (w, h, cb, p?: ImageEncodeOptions) => new Promise(async (res, rej) => {
+export const generateImage: generateImage_t = (w, h, cb, p?: ImageEncodeOptions, isBlob: boolean = false) =>
+new Promise<any>(async (res, rej) => {
 	const canvas: OffscreenCanvas = generateImage.canvas || (generateImage.canvas = new OffscreenCanvas(w, h));
 	const ctx = canvas.getContext('2d')!;
 	canvas.width = w; canvas.height = h;
@@ -250,6 +253,8 @@ export const generateImage: generateImage_t = (w, h, cb, p?: ImageEncodeOptions)
 	cb(ctx, w, h);
 
 	const blob = await canvas.convertToBlob(p);
+	if(isBlob) return res(blob);
+
 	const url = URL.createObjectURL(blob);
 
 	const img = new Image(w, h);

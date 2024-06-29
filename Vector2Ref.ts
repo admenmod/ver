@@ -1,26 +1,42 @@
-export type Vector2_t = Vector2 | number[] | { 0: number, 1: number };
+export type Vector2_t = Vector2Ref | number[] | { 0: number, 1: number };
 
 
-type cb = (vec: Vector2) => unknown;
+type cb = (vec: Vector2Ref) => unknown;
+type ref = { 0: number, 1: number };
+type accessor = (n: number, i: 0 | 1) => number;
+type accessors = { get?: accessor | null, set?: accessor | null };
 type mat = { a: number, b: number, c: number, d: number, e?: number, f?: number };
 
-export class Vector2 {
+export class Vector2Ref {
 	public readonly length: number = 2;
 
-	public 0: number = 0;
-	public 1: number = 0;
-
 	readonly #cb: cb | null = null;
+	readonly #ref: ref = { 0: 0, 1: 0 };
+
+	#get: accessor | null = null;
+	#set: accessor | null = null;
 
 	constructor();
 	constructor(x: number, y: number);
 	constructor(x: number, y: number, cb: cb | null);
+	constructor(ref: ref);
+	constructor(ref: ref, cb: cb | null);
 	constructor(...args: any[]) {
-		this[0] = args[0] || 0; this[1] = args[1] || 0;
-		this.#cb = args[2] || null;
+		if(typeof args[0] === 'object') {
+			this.#ref = args[0];
+			this.#cb = args[1] || null;
+		} else {
+			this[0] = args[0] || 0; this[1] = args[1] || 0;
+			this.#cb = args[2] || null;
+		}
 
 		Object.defineProperty(this, 'length', { writable: false, enumerable: false, configurable: true });
 	}
+
+	public get 0(): number { return this.#get?.(this.#ref[0], 0) ?? this.#ref[0]; }
+	public set 0(v: number) { this.#ref[0] = this.#set?.(v, 0) ?? v; }
+	public get 1(): number { return this.#get?.(this.#ref[1], 1) ?? this.#ref[1]; }
+	public set 1(v: number) { this.#ref[1] = this.#set?.(v, 1) ?? v; }
 
 	public apply(): this;
 	public apply(v: Vector2_t): this;
@@ -46,10 +62,25 @@ export class Vector2 {
 		this.#cb?.(this);
 	}
 
-	/** @deprecated use Vector2.new() */
-	public buf(): Vector2 { return new Vector2(this[0], this[1]); }
+	public new(cb: cb | null = null): Vector2Ref { return new Vector2Ref(this[0], this[1], cb); }
 
-	public new(cb: cb | null = null): Vector2 { return new Vector2(this[0], this[1], cb); }
+	public ref(cb: cb | null = null): Vector2Ref {
+		return new Vector2Ref(this, vec => {
+			this.#cb?.(this);
+			cb?.(vec);
+		});
+	}
+
+	public accessors(): accessors;
+	public accessors(accessors: accessors): this;
+	public accessors(accessors?: accessors): accessors | this {
+		if(!accessors) return { get: this.#get, set: this.#set };
+
+		this.#get = accessors.get === null ? null : accessors.get || this.#get;
+		this.#set = accessors.set === null ? null : accessors.set || this.#set;
+
+		return this;
+	}
 
 	public set(): this;
 	public set(v: Vector2_t): this;
@@ -320,26 +351,26 @@ export class Vector2 {
 	}
 
 
-	public static from(v: { x: number, y: number } | Vector2_t, cb: cb | null = null): Vector2 {
+	public static from(v: { x: number, y: number } | Vector2_t, cb: cb | null = null): Vector2Ref {
 		//@ts-ignore
-		return new Vector2(v.x ?? v[0], v.y ?? v[1], cb);
+		return new Vector2Ref(v.x ?? v[0], v.y ?? v[1], cb);
 	}
 
-	public static zero() { return new Vector2(); }
-	public static one() { return new Vector2(1, 1); }
+	public static zero() { return new Vector2Ref(); }
+	public static one() { return new Vector2Ref(1, 1); }
 
-	public static left() { return new Vector2(-1, 0); }
-	public static right() { return new Vector2(1, 0); }
-	public static up() { return new Vector2(0, -1); }
-	public static down() { return new Vector2(0, 1); }
+	public static left() { return new Vector2Ref(-1, 0); }
+	public static right() { return new Vector2Ref(1, 0); }
+	public static up() { return new Vector2Ref(0, -1); }
+	public static down() { return new Vector2Ref(0, 1); }
 
-	public static readonly ZERO = Object.freeze(new Vector2()) as Vector2;
-	public static readonly ONE = Object.freeze(new Vector2(1, 1)) as Vector2;
+	public static readonly ZERO = Object.freeze(new Vector2Ref()) as Vector2Ref;
+	public static readonly ONE = Object.freeze(new Vector2Ref(1, 1)) as Vector2Ref;
 
-	public static readonly LEFT = Object.freeze(new Vector2(-1, 0)) as Vector2;
-	public static readonly RIGHT = Object.freeze(new Vector2(1, 0)) as Vector2;
-	public static readonly UP = Object.freeze(new Vector2(0, -1)) as Vector2;
-	public static readonly DOWN = Object.freeze(new Vector2(0, 1)) as Vector2;
+	public static readonly LEFT = Object.freeze(new Vector2Ref(-1, 0)) as Vector2Ref;
+	public static readonly RIGHT = Object.freeze(new Vector2Ref(1, 0)) as Vector2Ref;
+	public static readonly UP = Object.freeze(new Vector2Ref(0, -1)) as Vector2Ref;
+	public static readonly DOWN = Object.freeze(new Vector2Ref(0, 1)) as Vector2Ref;
 
 	public static isNaN(v: Vector2_t) { return Number.isNaN(v[0]) || Number.isNaN(v[1]); }
 	public static isFinite(v: Vector2_t) { return Number.isFinite(v[0]) || Number.isFinite(v[1]); }
@@ -356,15 +387,18 @@ export class Vector2 {
 	public [Symbol.toPrimitive](): string { return this.toString(); }
 }
 
+Object.defineProperty(Vector2Ref.prototype, 0, { enumerable: true });
+Object.defineProperty(Vector2Ref.prototype, 1, { enumerable: true });
+
 
 export const vec2: {
-	(): Vector2;
-	(x: number, y: number): Vector2;
-	(x: number, y: number, cb: cb | null): Vector2;
-} = (...args: []): Vector2 => new Vector2(...args);
+	(): Vector2Ref;
+	(x: number, y: number): Vector2Ref;
+	(x: number, y: number, cb: cb | null): Vector2Ref;
+} = (...args: []): Vector2Ref => new Vector2Ref(...args);
 
 
-export class Vector2Cached extends Vector2 {
+export class Vector2RefCached extends Vector2Ref {
 	private _a_angle: boolean = true;
 	private _angle: number = super.angle;
 	public override get angle() { return this._a_angle ? this._angle : this._angle = super.angle; }

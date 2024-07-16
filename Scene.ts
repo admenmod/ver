@@ -156,7 +156,7 @@ export class Scene extends EventDispatcher {
 	private _name: string = this.constructor.name;
 	public get name(): string { return this._name; }
 	public set name(origin: unknown) {
-		const v = String(origin).replace(/\W+/, '');
+		const v = String(origin).replace(/\W+/g, '');
 
 		if(String(origin) !== v) console.warn(`(${origin}) this name invalid, changed to (${v})`);
 

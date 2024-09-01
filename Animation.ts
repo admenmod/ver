@@ -1,7 +1,7 @@
 import { Event, EventDispatcher } from './events.js';
 
 
-type Iter = Generator<number, void | boolean, number>;
+type Iter = Generator<number | null, void | boolean, number>;
 
 export declare namespace Animation {
 	export type Iterator = Iter;
@@ -82,10 +82,6 @@ export class Animation<const Args extends any[] = never> extends EventDispatcher
 		this.done = false;
 		this._isPlaying = true;
 
-		const { done, value } = this.iterator.next();
-		if(!done) this.time = value || 0;
-		else throw new Error('invalid animation');
-
 		this['@run'].emit(...args);
 
 		this.#args = args;
@@ -159,6 +155,8 @@ export class Animation<const Args extends any[] = never> extends EventDispatcher
 					return;
 				}
 			}
+
+			if(value === null) return;
 
 			this.dt -= this.time;
 			this.time = value;

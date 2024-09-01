@@ -1,3 +1,14 @@
+export declare namespace list {
+	export type head<T extends any[]> = T extends [infer R, ...args: any[]] ? R : never;
+	export type last<T extends any[]> = T extends [...args: any[], infer R] ? R : never;
+	export type apex<T extends any[]> = T extends [...args: infer R, any] ? R : never;
+	export type tail<T extends any[]> = T extends [any, ...args: infer R] ? R : never;
+}
+
+export declare namespace object {
+	export type assing<T extends any[]> = T extends [infer R] ? R : list.head<T> & assing<list.tail<T>>;
+}
+
 export type Fn<T = any, A extends any[] | readonly any[] = any, R = any> = (this: T, ...args: A) => R;
 export declare namespace Fn {
 	type T<F extends Fn> = F extends Fn<infer T, any, any> ? T : never;
@@ -5,7 +16,17 @@ export declare namespace Fn {
 	type R<F extends Fn> = F extends Fn<any, any, infer R> ? R : never;
 }
 
+export type Parameters<T extends ((this: any, ...args: any) => any) | (new (...args: any) => any)> =
+	T extends ((this: any, ...args: infer A) => any) | (new (...args: infer A) => any) ? A : never;
+
 export type Primitive = string | number | boolean | bigint | symbol | null | undefined;
+
+
+export declare namespace Generator {
+	export type T<T extends Generator<any, any, any>> = T extends Generator<infer R, any, any> ? R : never;
+	export type TReturn<T extends Generator<any, any, any>> = T extends Generator<any, infer R, any> ? R : never;
+	export type TNext<T extends Generator<any, any, any>> = T extends Generator<any, any, infer R> ? R : never;
+}
 
 
 export const typeOf = <T = unknown>(a: T) => {
@@ -65,6 +86,21 @@ export const tag = Object.freeze({
 	}
 });
 
+export const function_constructors = Object.freeze({
+	Function: (function() {}).constructor,
+	AsyncFunction: (async function() {}).constructor,
+	GeneratorFunction: (function* () {}).constructor,
+	AsyncGeneratorFunction: (async function* () {}).constructor
+});
+
+export const getTypeFunction = (fn: Function): keyof typeof function_constructors => {
+	if(typeof fn !== 'function') throw new Error('invalid arguments');
+	//@ts-ignore
+	for(const type in function_constructors) if(function_constructors[type] === fn.constructor) return type;
+	throw new Error('invalid arguments');
+};
+
+
 export const Fn = (fn: Fn) => {
 	const name = fn.name;
 	let str = fn.toString();
@@ -118,6 +154,23 @@ export const Fn = (fn: Fn) => {
 };
 
 
+export const object = Object.assign(Object.create(Object) as typeof Object, {
+	fullassign: <T extends object, Args extends (object | null)[]>(target: T, ...objects: Args) => {
+		for(const obj of objects) {
+			if(!obj) continue;
+
+			const keys = Object.getOwnPropertyNames(obj);
+			for(const key of keys) Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(obj, key)!);
+
+			const symbols = Object.getOwnPropertySymbols(obj);
+			for(const symbol of symbols) Object.defineProperty(target, symbol, Object.getOwnPropertyDescriptor(obj, symbol)!);
+		}
+
+		return target as object.assing<[T, ...Args]>;
+	}
+});
+
+
 interface IMath extends Math {
 	INF: number;
 	TAU: number;
@@ -158,8 +211,8 @@ for(const id of Object.getOwnPropertyNames(Math)) (math as any)[id] = (Math as a
 Object.freeze(math);
 
 
-export function delay(time: number): Promise<void>;
-export function delay<F extends Fn>(time: number, cb?: F, ctx?: Fn.T<F>, ...args: Fn.A<F>): Promise<Fn.R<F>>;
+export function delay(time?: number): Promise<void>;
+export function delay<F extends Fn>(time?: number, cb?: F, ctx?: Fn.T<F>, ...args: Fn.A<F>): Promise<Fn.R<F>>;
 export function delay<F extends Fn>(time: number = 0, cb?: F, ctx?: Fn.T<F>, ...args: Fn.A<F>): Promise<Fn.R<F> | void> {
 	return new Promise<Fn.R<F>>(res => {
 		const t = setTimeout(() => {

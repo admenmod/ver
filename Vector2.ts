@@ -143,6 +143,13 @@ export class Vector2 {
 		return this;
 	}
 
+	public sign(): this {
+		for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = Math.sign(this[i as 0 | 1]);
+
+		this.#cb?.(this);
+		return this;
+	}
+
 	public invert(): this {
 		for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = -this[i as 0 | 1];
 

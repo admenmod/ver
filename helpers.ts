@@ -71,6 +71,7 @@ export const type_of = <T = unknown>(a: T) => {
 
 export const hasOwnProperty = Object.prototype.hasOwnProperty;
 export const JSONcopy = <T extends object = object>(data: T): T => JSON.parse(JSON.stringify(data));
+export const log = (...args: any[]) => (console.log(...args), args.at(-1));
 
 export const regexp = (str: TemplateStringsArray, ...args: any) => {
 	for(let i = 0; i < args.length; i++) (args[i] instanceof RegExp) && (args[i] = args[i].source);

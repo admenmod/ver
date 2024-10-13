@@ -105,5 +105,5 @@ export class Viewport<T extends CanvasRenderingContext2D | OffscreenCanvasRender
 	public get vmax() { return Math.max(this.size.x, this.size.y) / 100; }
 	public get vmin() { return Math.min(this.size.x, this.size.y) / 100; }
 
-	public get [Symbol.toStringTag]() { return 'Viewport'; }
+	public override get [Symbol.toStringTag]() { return 'Viewport'; }
 }

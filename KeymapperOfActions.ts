@@ -47,6 +47,8 @@ export class MappingsMode extends Array<IMapping> {
 		if(collision) collision.action = action;
 		else maps.push(new Mapping(mapping, action));
 	}
+
+	public get [Symbol.toStringTag]() { return 'MappingsMode'; }
 }
 
 
@@ -214,4 +216,6 @@ export class KeymapperOfActions extends EventDispatcher {
 			this.resetTimer();
 		}
 	}
+
+	public override get [Symbol.toStringTag]() { return 'KeymapperOfActions'; }
 }

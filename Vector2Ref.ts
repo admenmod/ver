@@ -45,7 +45,7 @@ export class Vector2Ref {
 		if(args.length === 1) {
 			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = args[0][i]; }
 			else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = args[0]; }
-		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = +args[i] || 0; }
+		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = Number(args[i]) || 0; }
 
 		return this;
 	}
@@ -89,7 +89,7 @@ export class Vector2Ref {
 		if(args.length === 1) {
 			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = args[0][i]; }
 			else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = args[0]; }
-		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = +args[i] || 0; }
+		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = Number(args[i]) || 0; }
 
 		this.#cb?.(this);
 		return this;
@@ -101,7 +101,7 @@ export class Vector2Ref {
 		if(args.length === 1) {
 			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] += args[0][i]; }
 			else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] += args[0]; }
-		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] += +args[i] || 0; }
+		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] += Number(args[i]) || 0; }
 
 		this.#cb?.(this);
 		return this;
@@ -113,7 +113,7 @@ export class Vector2Ref {
 		if(args.length === 1) {
 			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] -= args[0][i]; }
 			else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] -= args[0]; }
-		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] -= +args[i] || 0; }
+		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] -= Number(args[i]) || 0; }
 
 		this.#cb?.(this);
 		return this;
@@ -125,7 +125,7 @@ export class Vector2Ref {
 		if(args.length === 1) {
 			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] *= args[0][i]; }
 			else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] *= args[0]; }
-		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] *= +args[i] ?? 1; }
+		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] *= Number(args[i]) ?? 1; }
 
 		this.#cb?.(this);
 		return this;
@@ -137,7 +137,7 @@ export class Vector2Ref {
 		if(args.length === 1) {
 			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] /= args[0][i]; }
 			else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] /= args[0]; }
-		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] /= +args[i] ?? 1; }
+		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] /= Number(args[i]) ?? 1; }
 
 		this.#cb?.(this);
 		return this;
@@ -149,7 +149,7 @@ export class Vector2Ref {
 		if(args.length === 1) {
 			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] **= args[0][i]; }
 			else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] **= args[0]; }
-		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] **= +args[i] ?? 1; }
+		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] **= Number(args[i]) ?? 1; }
 
 		this.#cb?.(this);
 		return this;
@@ -161,7 +161,7 @@ export class Vector2Ref {
 		if(args.length === 1) {
 			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] %= args[0][i]; }
 			else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] %= args[0]; }
-		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] %= +args[i] ?? 1; }
+		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] %= Number(args[i]) ?? 1; }
 
 		this.#cb?.(this);
 		return this;
@@ -390,7 +390,7 @@ export class Vector2Ref {
 		for(let i = 0; i < this.length; i++) yield this[i as 0 | 1];
 	}
 
-	public get [Symbol.toStringTag]() { return 'Vector2'; }
+	public get [Symbol.toStringTag]() { return 'Vector2Ref'; }
 	public [Symbol.toPrimitive](): string { return this.toString(); }
 }
 

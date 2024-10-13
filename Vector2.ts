@@ -29,7 +29,7 @@ export class Vector2 {
 		if(args.length === 1) {
 			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = args[0][i]; }
 			else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = args[0]; }
-		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = +args[i] || 0; }
+		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = Number(args[i]) || 0; }
 
 		return this;
 	}
@@ -58,7 +58,7 @@ export class Vector2 {
 		if(args.length === 1) {
 			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = args[0][i]; }
 			else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = args[0]; }
-		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = +args[i] || 0; }
+		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] = Number(args[i]) || 0; }
 
 		this.#cb?.(this);
 		return this;
@@ -70,7 +70,7 @@ export class Vector2 {
 		if(args.length === 1) {
 			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] += args[0][i]; }
 			else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] += args[0]; }
-		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] += +args[i] || 0; }
+		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] += Number(args[i]) || 0; }
 
 		this.#cb?.(this);
 		return this;
@@ -82,7 +82,7 @@ export class Vector2 {
 		if(args.length === 1) {
 			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] -= args[0][i]; }
 			else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] -= args[0]; }
-		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] -= +args[i] || 0; }
+		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] -= Number(args[i]) || 0; }
 
 		this.#cb?.(this);
 		return this;
@@ -94,7 +94,7 @@ export class Vector2 {
 		if(args.length === 1) {
 			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] *= args[0][i]; }
 			else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] *= args[0]; }
-		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] *= +args[i] ?? 1; }
+		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] *= Number(args[i]) ?? 1; }
 
 		this.#cb?.(this);
 		return this;
@@ -106,7 +106,7 @@ export class Vector2 {
 		if(args.length === 1) {
 			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] /= args[0][i]; }
 			else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] /= args[0]; }
-		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] /= +args[i] ?? 1; }
+		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] /= Number(args[i]) ?? 1; }
 
 		this.#cb?.(this);
 		return this;
@@ -118,7 +118,7 @@ export class Vector2 {
 		if(args.length === 1) {
 			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] **= args[0][i]; }
 			else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] **= args[0]; }
-		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] **= +args[i] ?? 1; }
+		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] **= Number(args[i]) ?? 1; }
 
 		this.#cb?.(this);
 		return this;
@@ -130,7 +130,7 @@ export class Vector2 {
 		if(args.length === 1) {
 			if(typeof args[0] === 'object') { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] %= args[0][i]; }
 			else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] %= args[0]; }
-		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] %= +args[i] ?? 1; }
+		} else { for(let i = 0; i < this.length; ++i) this[i as 0 | 1] %= Number(args[i]) ?? 1; }
 
 		this.#cb?.(this);
 		return this;

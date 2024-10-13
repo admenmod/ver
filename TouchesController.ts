@@ -159,7 +159,7 @@ export class TouchesController extends EventDispatcher {
 		for(let i = 0; i < this.touches.length; i++) if(this.touches[i].isActive) yield this.touches[i];
 	}
 
-	public get [Symbol.toStringTag]() { return 'TouchesController'; }
+	public override get [Symbol.toStringTag]() { return 'TouchesController'; }
 }
 
 
@@ -247,5 +247,5 @@ export class Touch extends EventDispatcher {
 	}
 
 
-	public get [Symbol.toStringTag]() { return 'Touch'; }
+	public override get [Symbol.toStringTag]() { return 'Touch'; }
 }

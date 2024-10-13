@@ -63,4 +63,6 @@ export class MainLoop extends EventDispatcher {
 	public destroy(): void {
 		this.events_off(true);
 	}
+
+	public override get [Symbol.toStringTag]() { return 'MainLoop'; }
 }

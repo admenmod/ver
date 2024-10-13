@@ -187,4 +187,6 @@ export class KeyboardInputInterceptor extends EventDispatcher {
 		if(typeof force === 'undefined') this.isFocus ? this.blur() : this.focus();
 		else this.isFocus === !force ? this.blur() : this.focus();
 	}
+
+	public override get [Symbol.toStringTag]() { return 'KeyboardInputInterceptor'; }
 }

@@ -37,6 +37,8 @@ export class ShadowLayer extends EventDispatcher {
 			this.canvas.height = vec.y;
 		});
 	}
+
+	public override get [Symbol.toStringTag]() { return 'ShadowLayer'; }
 }
 
 
@@ -209,4 +211,6 @@ export class CanvasLayers extends EventDispatcher {
 		this.emit('PostRender', ctx);
 		ctx.restore();
 	}
+
+	public override get [Symbol.toStringTag]() { return 'CanvasLayers'; }
 }

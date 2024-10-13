@@ -129,4 +129,6 @@ export class System<Item extends typeof Scene> extends EventDispatcher {
 
 		return true;
 	}
+
+	public override get [Symbol.toStringTag]() { return 'System'; }
 }

@@ -1,8 +1,8 @@
 export declare namespace list {
-	export type head<T extends any[]> = T extends [infer R, ...args: any[]] ? R : never;
-	export type last<T extends any[]> = T extends [...args: any[], infer R] ? R : never;
-	export type apex<T extends any[]> = T extends [...args: infer R, any] ? R : never;
-	export type tail<T extends any[]> = T extends [any, ...args: infer R] ? R : never;
+	export type head<T extends any[]> = T extends [infer R, ...any[]] ? R : never;
+	export type last<T extends any[]> = T extends [...any[], infer R] ? R : never;
+	export type apex<T extends any[]> = T extends [...infer R, any] ? R : never;
+	export type tail<T extends any[]> = T extends [any, ...infer R] ? R : never;
 }
 
 export declare namespace object {
@@ -180,6 +180,7 @@ interface IMath extends Math {
 	randomInt(a: number, b: number): number;
 	randomFloat(a: number, b: number): number;
 	mod(x: number, min?: number, max?: number): number;
+	map(min: number, max: number, c: number): number;
 	clamp(min: number, x: number, max: number): number;
 	floorToZero(x: number): number;
 	ceilToZero(x: number): number;
@@ -204,6 +205,7 @@ for(const id of Object.getOwnPropertyNames(Math)) (math as any)[id] = (Math as a
 	return min + offset;
 };
 
+(math as IMath).map = (min: number, max: number, c: number) => (max-min) * c + min;
 (math as IMath).clamp = (min: number, x: number, max: number): number => x < min ? min : x > max ? max : x;
 
 (math as IMath).floorToZero = (x: number) => math.floor(math.abs(x)) * Math.sign(x);
@@ -295,6 +297,7 @@ type cb_t = (ctx: OffscreenCanvasRenderingContext2D, w: number, h: number) => vo
 interface generateImage_t {
 	(w: number, h: number, cb: cb_t, p?: ImageEncodeOptions, isBlob?: false): Promise<Image>;
 	(w: number, h: number, cb: cb_t, p: ImageEncodeOptions, isBlob: true): Promise<Blob>;
+	(w: number, h: number, cb: cb_t, p?: ImageEncodeOptions, isBlob?: boolean): Promise<Image> | Promise<Blob>;
 	canvas?: OffscreenCanvas;
 };
 

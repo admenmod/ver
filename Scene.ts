@@ -384,4 +384,6 @@ export class Scene extends EventDispatcher {
 			}
 		}
 	}
+
+	public override get [Symbol.toStringTag]() { return 'Scene'; }
 }

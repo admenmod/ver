@@ -184,4 +184,6 @@ export class Animation<const Args extends any[] = never> extends EventDispatcher
 		if(!this.iterator || this.done) return Promise.resolve().then(onfulfilled, onrejected);
 		return new Promise<void>(res => this['@end'].once(() => res())).then(onfulfilled, onrejected);
 	}
+
+	public override get [Symbol.toStringTag]() { return 'Animation'; }
 }

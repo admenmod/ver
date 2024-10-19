@@ -1,13 +1,12 @@
 import { Vector2 } from './Vector2.js';
 import { Event, EventDispatcher } from './events.js';
 
-export const config = {
-	DOWN_TIME: 300,
-	CLICK_TIME: 300,
-	CLICK_GAP: 300
-};
 
 export class TouchesController extends EventDispatcher {
+	public static DOWN_TIME = 300;
+	public static CLICK_TIME = 300;
+	public static CLICK_GAP = 30;
+
 	public active: number[] = [];
 	public touches: Touch[] = [];
 
@@ -84,7 +83,7 @@ export class TouchesController extends EventDispatcher {
 
 				if(!tTouch.moved) tTouch.fC = true;
 
-				if(tTouch.fC && tTouch.downTime <= config.CLICK_TIME && tTouch.upTime <= config.CLICK_GAP) {
+				if(tTouch.fC && tTouch.downTime <= TouchesController.CLICK_TIME && tTouch.upTime <= TouchesController.CLICK_GAP) {
 					tTouch.clickCount++;
 				} else tTouch.clickCount = 0;
 
@@ -139,7 +138,7 @@ export class TouchesController extends EventDispatcher {
 	public isPress() { return this.touches.some(i => i.isPress()); }
 	public isUp() { return this.touches.some(i => i.isUp()); }
 	public isMove() { return this.touches.some(i => i.isMove()); }
-	public isClick(time: number = config.CLICK_TIME, gap: number = config.CLICK_GAP) {
+	public isClick(time: number = TouchesController.CLICK_TIME, gap: number = TouchesController.CLICK_GAP) {
 		return this.touches.some(i => i.isClick(time, gap));
 	}
 	public isdblClick() { return this.touches.some(i => i.isdblClick()); }
@@ -226,18 +225,18 @@ export class Touch extends EventDispatcher {
 	public isUp() { return this.fU; }
 	public isMove() { return this.fM; }
 
-	public isClick(time: number = config.CLICK_TIME, gap: number = config.CLICK_GAP) {
+	public isClick(time: number = TouchesController.CLICK_TIME, gap: number = TouchesController.CLICK_GAP) {
 		return this.fC && this.downTime <= time && this.upTime <= gap;
 	}
 	public isdblClick() { return this.fC && this.clickCount === 2; }
 
-	public isTimeDown(time: number = config.DOWN_TIME) { return !this.moved && this.down && this.downTime >= time; }
+	public isTimeDown(time: number = TouchesController.DOWN_TIME) { return !this.moved && this.down && this.downTime >= time; }
 
 	public nullify(dt: number) {
 		if(this.up) this.upTime += dt;
 		if(this.down) this.downTime += dt;
 
-		if(this.downTime > config.CLICK_TIME || this.upTime > config.CLICK_GAP) this.clickCount = 0;
+		if(this.downTime > TouchesController.CLICK_TIME || this.upTime > TouchesController.CLICK_GAP) this.clickCount = 0;
 		this.fP = this.fU = this.fM = this.fC = false;
 	}
 

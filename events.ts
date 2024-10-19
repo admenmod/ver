@@ -1,19 +1,19 @@
 import type { Fn } from './helpers.js';
 
 
+type tag = string | symbol;
+
 export const DEFAULT_TAG = Symbol('DEFAULT_TAG');
 const sort = (a: EventListener, b: EventListener) => a.priority - b.priority;
-
-type tag = string | symbol;
 
 
 export interface EventAsFunction<This, Args extends any[]> {
 	(...args: Args): void;
-	on(fn: Fn<This, Args>, priority?: number, tag?: tag, once?: boolean, shift?: boolean): void;
-	once(fn: Fn<This, Args>, priority?: number, tag?: tag, once?: boolean, shift?: boolean): void;
-	off(): number;
-	off(tag: tag): number;
-	off(fn: Fn<This, Args>): number;
+	on(fn: Fn<This, Args>, priority?: number, tag?: tag, once?: boolean, shift?: boolean): typeof fn;
+	once(fn: Fn<This, Args>, priority?: number, tag?: tag, once?: boolean, shift?: boolean): typeof fn;
+	off(): Fn<This, Args>[];
+	off(tag: tag): Fn<This, Args>[];
+	off(fn: Fn<This, Args>): Fn<This, Args>[];
 
 	emit(...args: Args): void;
 	async(...args: Args): Promise<void>;
@@ -21,7 +21,11 @@ export interface EventAsFunction<This, Args extends any[]> {
 	[Symbol.iterator](): Generator<EventListener<This, Args>, void, void>;
 }
 
-export const EventAsFunction = function<This = any, Args extends any[] = any[]>(_this: This) {
+export const EventAsFunction = function<This = any, Args extends any[] = any[]>(
+	_this: This,
+	on: ON_HANDLER<This, Args> | null = null,
+	off: OFF_HANDLER<This, Args> | null = null
+) {
 	if(!new.target) throw new Error(`Class constructor EventAsFunction connot be invoked without 'new'`);
 
 	const listeners: EventListener<This, Args>[] = [];
@@ -56,33 +60,44 @@ export const EventAsFunction = function<This = any, Args extends any[] = any[]>(
 		}
 	};
 
-	event.on = (fn: Fn<This, Args>, priority: number = 0, tag: tag = DEFAULT_TAG, once = false, shift = false): void => {
+	event.on = (fn: Fn<This, Args>, priority: number = 0, tag: tag = DEFAULT_TAG, once = false, shift = false): typeof fn => {
 		const listener = new EventListener(fn, _this, priority, tag, once) as EventListener;
 
 		if(!shift) listeners.unshift(listener);
 		else listeners.push(listener);
 
 		listeners.sort(sort);
+
+		on?.call(event, fn, priority, tag, once, shift);
+
+		return fn;
 	};
 
-	event.once = (fn: Fn<This, Args>, priority: number = 0, tag: tag = DEFAULT_TAG, once = true, shift = false): void => {
-		event.on(fn, priority, tag, once, shift);
+	event.once = (fn: Fn<This, Args>, priority: number = 0, tag: tag = DEFAULT_TAG, once = true, shift = false): typeof fn => {
+		return event.on(fn, priority, tag, once, shift);
 	};
 
 	event.off = (tag?: Fn<This, Args> | tag) => {
-		let c = 0;
+		let removed: EventListener<This, Args>[] = [];
 
 		if(tag) {
-			for(let i = listeners.length-1; i >= 0; --i) {
-				if(listeners[i].fn === tag) return listeners.splice(i, 1).length;
-				if(listeners[i].tag === tag) c += listeners.splice(i, 1).length;
+			if(typeof tag === 'function') {
+				for(let i = listeners.length-1; i >= 0; --i) {
+					if(listeners[i].fn === tag) removed.push(listeners.splice(i, 1)[0]);
+				}
+			} else {
+				for(let i = listeners.length-1; i >= 0; --i) {
+					if(listeners[i].tag === tag) removed.push(listeners.splice(i, 1)[0]);
+				}
 			}
 		} else {
-			c = listeners.length;
+			for(let i = listeners.length-1; i >= 0; --i) removed.push(listeners[i]);
 			listeners.length = 0;
 		}
 
-		return c;
+		off?.call(event, tag, removed);
+
+		return removed.map(it => it.fn);
 	};
 
 	event[Symbol.iterator] = function*(): Generator<EventListener<This, Args>, void, void> {
@@ -90,7 +105,9 @@ export const EventAsFunction = function<This = any, Args extends any[] = any[]>(
 	};
 
 	return event;
-} as unknown as new <This = any, Args extends any[] = any[]>(_this: This) => EventAsFunction<This, Args>;
+} as unknown as new <
+	This = any, Args extends any[] = any[]
+>(_this: This, on?: ON_HANDLER<This, Args> | null, off?: OFF_HANDLER<This, Args> | null) => EventAsFunction<This, Args>;
 
 
 export interface FunctionIsEvent<This, Args extends any[], F extends Fn<any, any, any>> {
@@ -107,10 +124,10 @@ export interface FunctionIsEvent<This, Args extends any[], F extends Fn<any, any
 export const FunctionIsEvent = function<
 	This = null, Args extends any[] = [],
 	F extends Fn<any, any, any> = Fn<null, [], void>
->(_this: This, fn: F) {
+>(_this: This, fn: F, on: ON_HANDLER<This, Args> | null = null, off: OFF_HANDLER<This, Args> | null = null) {
 	if(!new.target) throw new Error(`Class constructor FunctionIsEvent connot be invoked without 'new'`);
 
-	const event = new EventAsFunction<This, Args>(_this);
+	const event = new EventAsFunction<This, Args>(_this, on, off);
 	const fn_event: FunctionIsEvent<This, Args, F> = (...args: Fn.A<F>): Fn.R<F> => fn.apply(event, args);
 
 	fn_event.on = event.on;
@@ -125,7 +142,7 @@ export const FunctionIsEvent = function<
 } as unknown as new <
 	This = null, Args extends any[] = [],
 	F extends Fn<any, any, any> = Fn<null, [], void>
->(_this: This, fn: F) => FunctionIsEvent<This, Args, F>;
+>(_this: This, fn: F, on?: ON_HANDLER<This, Args> | null, off?: OFF_HANDLER<This, Args> | null) => FunctionIsEvent<This, Args, F>;
 
 
 export class EventListener<This = any, Args extends any[] = any[]> {
@@ -140,6 +157,10 @@ export class EventListener<This = any, Args extends any[] = any[]> {
 	public get [Symbol.toStringTag]() { return 'EventListener'; }
 }
 
+export type ON_HANDLER<This, Args extends any[]> =
+	<T extends This>(fn: Fn<T, Args>, priority: number, tag: tag, once: boolean, shift: boolean) => unknown;
+export type OFF_HANDLER<This, Args extends any[]> =
+	<T extends This>(tag: Fn<T, Args> | tag | void, listeners: EventListener<This, Args>[]) => unknown;
 
 export declare namespace Event {
 	export type name<T extends string = string> = `@${T}`;
@@ -163,10 +184,17 @@ export declare namespace Event {
 }
 
 export class Event<This = any, Args extends any[] = any[]> {
+	#on: ON_HANDLER<This, Args> | null = null;
+	#off: OFF_HANDLER<This, Args> | null = null;
+
 	#this: This;
 	#listeners: EventListener<This, Args>[] = [];
 
-	constructor(_this: This) { this.#this = _this; }
+	constructor(_this: This, on: ON_HANDLER<This, Args> | null = null, off: OFF_HANDLER<This, Args> | null = null) {
+		this.#this = _this;
+		this.#on = on;
+		this.#off = off;
+	}
 
 	public on<T extends This>(fn: Fn<T, Args>, priority: number = 0, tag: tag = DEFAULT_TAG, once = false, shift = false): typeof fn {
 		const listener = new EventListener(fn, this.#this as any, priority, tag, once) as EventListener;
@@ -176,6 +204,9 @@ export class Event<This = any, Args extends any[] = any[]> {
 
 		this.#listeners.sort(sort);
 
+		//@ts-ignore
+		this.#on?.call(this, fn, priority, tag, once, shift);
+
 		return fn;
 	}
 
@@ -183,23 +214,31 @@ export class Event<This = any, Args extends any[] = any[]> {
 		return this.on(fn, priority, tag, once, shift);
 	}
 
-	public off(): number;
-	public off(tag: tag): number;
-	public off<T extends This>(fn: Fn<T, Args>): number;
-	public off<T extends This>(tag?: Fn<T, Args> | tag): number {
-		let c = 0;
+	public off<T extends This>(): Fn<T, Args>[];
+	public off<T extends This>(tag: tag): Fn<T, Args>[];
+	public off<T extends This>(fn: Fn<T, Args>): Fn<T, Args>[];
+	public off<T extends This>(tag?: Fn<T, Args> | tag): Fn<T, Args>[] {
+		let removed: EventListener<This, Args>[] = [];
 
 		if(tag) {
-			for(let i = this.#listeners.length-1; i >= 0; --i) {
-				if(this.#listeners[i].fn === tag) return this.#listeners.splice(i, 1).length;
-				if(this.#listeners[i].tag === tag) c += this.#listeners.splice(i, 1).length;
+			if(typeof tag === 'function') {
+				for(let i = this.#listeners.length-1; i >= 0; --i) {
+					if(this.#listeners[i].fn === tag) removed.push(this.#listeners.splice(i, 1)[0]);
+				}
+			} else {
+				for(let i = this.#listeners.length-1; i >= 0; --i) {
+					if(this.#listeners[i].tag === tag) removed.push(this.#listeners.splice(i, 1)[0]);
+				}
 			}
 		} else {
-			c = this.#listeners.length;
+			for(let i = this.#listeners.length-1; i >= 0; --i) removed.push(this.#listeners[i]);
 			this.#listeners.length = 0;
 		}
 
-		return c;
+		//@ts-ignore
+		this.#off?.call(this, tag, removed);
+
+		return removed.map(it => it.fn);
 	}
 
 	public emit(...args: Args): void {

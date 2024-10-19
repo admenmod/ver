@@ -251,12 +251,15 @@ export class Vector2 {
 		return this;
 	}
 
-	public normalize(a: number = 1): this {
-		const l: number = this.module/a;
+	public normalize(a: number = 1): number {
+		if(this.isSame(Vector2.ZERO)) return 0;
+
+		const module = this.module;
+		const l: number = module/a;
 		for(let i = 0; i < this.length; ++i) this[i as 0 | 1] /= l;
 
 		this.#cb?.(this);
-		return this;
+		return module;
 	}
 
 	public normal(dir: number = 1): this {

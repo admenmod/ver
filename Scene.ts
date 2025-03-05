@@ -5,6 +5,8 @@ type getTree<T extends Scene> = { [K in keyof ReturnType<T['TREE']>]: InstanceTy
 type pos_t = number | 'start' | 'end';
 
 
+const TRAIT_CLASS_SCENE = Symbol('trait<class Scene>');
+
 export class Scene extends EventDispatcher {
 	public '@ready' = new Event<Scene, []>(this);
 	public '@init' = new Event<Scene, []>(this);
@@ -317,9 +319,17 @@ export class Scene extends EventDispatcher {
 		while(w = w._owner) yield w;
 	}
 
-	public *getChainOwnersOf<T extends typeof Scene>(T: T): Generator<InstanceType<T>> {
-		for(const i of this.chein_owners()) {
-			if(i instanceof T) yield i as InstanceType<T>;
+	public getChainOwnersOf<T extends typeof Scene>(T: T): Generator<InstanceType<T>>;
+	public getChainOwnersOf<T extends Scene>(T: (o: any) => o is T): Generator<T>;
+	public *getChainOwnersOf(T: any) {
+		if(Scene.isClassScene(T)) {
+			for(const i of this.chein_owners()) {
+				if(i instanceof T) yield i;
+			}
+		} else {
+			for(const i of this.chein_owners()) {
+				if(T(i)) yield i;
+			}
 		}
 	}
 
@@ -351,23 +361,47 @@ export class Scene extends EventDispatcher {
 		}
 	}
 
-	public *getChildrenOf<T extends typeof Scene>(T: T, r: boolean = true): Generator<InstanceType<T>> {
-		for(const i of this.children(r)) {
-			if(i instanceof T) yield i as InstanceType<T>;
+	public getChildrenOf<T extends typeof Scene>(T: T, r: boolean): Generator<InstanceType<T>>;
+	public getChildrenOf<T extends Scene>(T: (o: any) => o is T): Generator<T>;
+	public *getChildrenOf(T: any, r: boolean = true) {
+		if(Scene.isClassScene(T)) {
+			for(const i of this.children(r)) {
+				if(i instanceof T) yield i;
+			}
+		} else {
+			for(const i of this.children(r)) {
+				if(T(i)) yield i;
+			}
 		}
 	}
 
-	public *getChainParentsOf<T extends typeof Scene>(T: T): Generator<InstanceType<T>> {
-		for(const i of this.chein_parents()) {
-			if(i instanceof T) yield i as InstanceType<T>;
+	public getChainParentsOf<T extends typeof Scene>(T: T): Generator<InstanceType<T>>;
+	public getChainParentsOf<T extends Scene>(T: (o: any) => o is T): Generator<T>;
+	public *getChainParentsOf(T: any) {
+		if(Scene.isClassScene(T)) {
+			for(const i of this.chein_parents()) {
+				if(i instanceof T) yield i;
+			}
+		} else {
+			for(const i of this.chein_parents()) {
+				if(T(i)) yield i;
+			}
 		}
 	}
 
-	public getRootOf<T extends typeof Scene>(T: T): InstanceType<T> {
-		let root: InstanceType<T> = this as InstanceType<T>;
+	public getRootOf<T extends typeof Scene>(T: T): InstanceType<T>;
+	public getRootOf<T extends Scene>(T: (o: any) => o is T): T;
+	public getRootOf(T: any) {
+		let root: any = this;
 
-		for(const i of this.chein_parents()) {
-			if(i instanceof T) root = i as InstanceType<T>;
+		if(Scene.isClassScene(T)) {
+			for(const i of this.chein_parents()) {
+				if(i instanceof T) root = i;
+			}
+		} else {
+			for(const i of this.chein_parents()) {
+				if(T(i)) root = i;
+			}
 		}
 
 		return root;
@@ -386,4 +420,8 @@ export class Scene extends EventDispatcher {
 	}
 
 	public override get [Symbol.toStringTag]() { return 'Scene'; }
+
+	private static readonly [TRAIT_CLASS_SCENE] = true;
+
+	public static isClassScene(o: any) { return o[TRAIT_CLASS_SCENE]; }
 }

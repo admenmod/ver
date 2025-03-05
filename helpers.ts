@@ -6,7 +6,7 @@ export declare namespace list {
 }
 
 export declare namespace object {
-	export type assing<T extends any[]> = T extends [infer R] ? R : list.head<T> & assing<list.tail<T>>;
+	export type assign<T extends any[]> = T extends [infer R] ? R : list.head<T> & assign<list.tail<T>>;
 }
 
 export type Fn<T = any, A extends any[] | readonly any[] = any, R = any> = (this: T, ...args: A) => R;
@@ -71,7 +71,7 @@ export const type_of = <T = unknown>(a: T) => {
 
 export const hasOwnProperty = Object.prototype.hasOwnProperty;
 export const JSONcopy = <T extends object = object>(data: T): T => JSON.parse(JSON.stringify(data));
-export const log = (...args: any[]) => (console.log(...args), args.at(-1));
+export const log = <const T extends any[]>(...args: T): list.last<T> => (console.log(...args), args.at(-1));
 
 export const regexp = (str: TemplateStringsArray, ...args: any) => {
 	for(let i = 0; i < args.length; i++) (args[i] instanceof RegExp) && (args[i] = args[i].source);
@@ -167,7 +167,7 @@ export const object = Object.assign(Object.create(Object) as typeof Object, {
 			for(const symbol of symbols) Object.defineProperty(target, symbol, Object.getOwnPropertyDescriptor(obj, symbol)!);
 		}
 
-		return target as object.assing<[T, ...Args]>;
+		return target as object.assign<[T, ...Args]>;
 	}
 });
 

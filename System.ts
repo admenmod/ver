@@ -2,13 +2,13 @@ import { Event, EventDispatcher } from './events.js';
 import { Scene } from './Scene.js';
 
 
-export class System<Item extends typeof Scene> extends EventDispatcher {
+export class System<Item extends Scene> extends EventDispatcher {
 	public '@destroy' = new Event<System<Item>, []>(this);
 	public '@destroyed' = new Event<System<Item>, []>(this);
 
-	public '@add' = new Event<System<Item>, [item: InstanceType<Item>]>(this);
-	public '@removing' = new Event<System<Item>, [item: InstanceType<Item>]>(this);
-	public '@removed' = new Event<System<Item>, [item: InstanceType<Item>]>(this);
+	public '@add' = new Event<System<Item>, [item: Item]>(this);
+	public '@removing' = new Event<System<Item>, [item: Item]>(this);
+	public '@removed' = new Event<System<Item>, [item: Item]>(this);
 
 	public '@watch' = new Event<System<Item>, [o: Scene]>(this);
 	public '@unwatching' = new Event<System<Item>, [o: Scene]>(this);
@@ -17,34 +17,43 @@ export class System<Item extends typeof Scene> extends EventDispatcher {
 
 	protected _isDestroyed: boolean = false;
 	protected _observed: Scene[] = [];
-	protected _items: InstanceType<Item>[] = [];
+	protected _items: Item[] = [];
 
-	constructor(public readonly Item: Item) { super(); }
+	public isItem: (v: any) => v is Item;
+
+	constructor(Item: new (...args: any) => Item);
+	constructor(isItem: (v: any) => v is Item);
+	constructor(isItem: any) {
+		super();
+
+		if(!Scene.isClassScene(isItem)) this.isItem = (v: any): v is Item => isItem(v);
+		else this.isItem = (v: any): v is Item => v instanceof isItem;
+	}
 
 
 	public add<T extends Scene>(item: T, r?: true): void;
-	public add<T extends InstanceType<Item>>(item: T, r?: false): void;
-	public add<T extends InstanceType<Item>>(item: T, r: boolean = true): void {
+	public add<T extends Item>(item: T, r?: false): void;
+	public add<T extends Item>(item: T, r: boolean = true): void {
 		if(this._isDestroyed) return;
 
-		if(!r && item instanceof this.Item && !this._items.includes(item)) {
+		if(!r && this.isItem(item) && !this._items.includes(item)) {
 			this._items.push(item);
 			this['@add'].emit(item);
 		} else {
-			if(item instanceof this.Item) this.add(item, false);
+			if(this.isItem(item)) this.add(item, false);
 
-			for(const i of item.getChildrenOf(this.Item)) {
+			for(const i of item.getChildrenOf(this.isItem)) {
 				this.add(i, false);
 			}
 		}
 	}
 
 	public remove<T extends Scene>(item: T, r?: true): void;
-	public remove<T extends InstanceType<Item>>(item: T, r?: false): void;
-	public remove<T extends InstanceType<Item>>(item: T, r: boolean = true): void {
+	public remove<T extends Item>(item: T, r?: false): void;
+	public remove<T extends Item>(item: T, r: boolean = true): void {
 		if(this._isDestroyed) return;
 
-		if(!r && item instanceof this.Item && this._items.includes(item)) {
+		if(!r && this.isItem(item) && this._items.includes(item)) {
 			this['@removing'].emit(item);
 
 			const l = this._items.indexOf(item);
@@ -53,9 +62,9 @@ export class System<Item extends typeof Scene> extends EventDispatcher {
 
 			this['@removed'].emit(item);
 		} else {
-			if(item instanceof this.Item) this.remove(item, false);
+			if(this.isItem(item)) this.remove(item, false);
 
-			for(const i of item.getChildrenOf(this.Item)) {
+			for(const i of item.getChildrenOf(this.isItem)) {
 				this.remove(i, false);
 			}
 		}

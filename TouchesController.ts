@@ -3,6 +3,10 @@ import { Event, EventDispatcher } from './events.js';
 
 
 export class TouchesController extends EventDispatcher {
+	public '@init' = new Event<TouchesController, [el: TouchesController['el'], filter: TouchesController['filter']]>(this);
+	public '@destroy' = new Event<TouchesController, []>(this);
+	public '@destroyed' = new Event<TouchesController, []>(this);
+
 	public static DOWN_TIME = 300;
 	public static CLICK_TIME = 300;
 	public static CLICK_GAP = 30;
@@ -17,122 +21,147 @@ export class TouchesController extends EventDispatcher {
 	public '@touchmove' = new Event<TouchesController, [
 		touch: Touch, e_touch: globalThis.Touch, touches: TouchesController, e: TouchEvent]>(this);
 
-	public '@touchclick' = new Event<TouchesController, [
-		touch: Touch, touches: TouchesController, e: TouchEvent]>(this);
-	public '@touchdblclick' = new Event<TouchesController, [
-		touch: Touch, touches: TouchesController, e: TouchEvent]>(this);
+	public '@touchclick' = new Event<TouchesController, [touch: Touch, touches: TouchesController, e: TouchEvent]>(this);
+	public '@touchdblclick' = new Event<TouchesController, [touch: Touch, touches: TouchesController, e: TouchEvent]>(this);
 
-	constructor(el: HTMLElement, filter: (e: TouchEvent) => boolean = () => true) {
-		super();
+	public el: HTMLElement | null = null;
+	public filter: (e: TouchEvent) => boolean = () => true;
 
-		el.addEventListener('touchstart', e => {
-			if(!filter(e)) return;
+	public init(el: NonNullable<TouchesController['el']>, filter: TouchesController['filter'] = this.filter): this {
+		if(this.el) return this;
+		this.el = el;
 
-			const box = el.getBoundingClientRect();
+		this.el.addEventListener('touchstart', this._onTouchStart, { passive: true });
+		this.el.addEventListener('touchend', this._onTouchEnd, { passive: true });
+		this.el.addEventListener('touchmove', this._onTouchMove, { passive: true });
 
-			if(e.touches.length > this.touches.length) this.touches.push(new Touch(this.touches.length));
+		this['@init'].emit(el, filter);
 
-			for(let i = 0; i < e.touches.length; i++) {
-				let id = e.touches[i].identifier;
-				if(this.active.includes(id)) continue;
-
-				let tTouch = this.touches[id];
-				let eTouch = e.touches[i];
-
-				tTouch.up = false;
-				tTouch.down = true;
-
-				tTouch.downTime = 0;
-
-				tTouch.moved = false;
-
-				tTouch.fD = true;
-				tTouch.fP = true;
-
-				tTouch.b[0] = tTouch.pos[0] = eTouch.pageX - box.left;
-				tTouch.b[1] = tTouch.pos[1] = eTouch.pageY - box.top;
-
-				tTouch.isActive = true;
-				this.active.push(id);
-
-				tTouch['@start'].emit(tTouch, eTouch, this, e);
-
-				this['@touchstart'].emit(tTouch, eTouch, this, e);
-			}
-		}, { passive: true });
-
-		el.addEventListener('touchend', e => {
-			if(!filter(e)) return;
-
-			for(let k = 0; k < this.active.length; k++) {
-				let c = false;
-				for(let i = 0; i < e.touches.length; i++) {
-					if(this.active[k] === e.touches[i].identifier) c = true;
-				};
-				if(c) continue;
-
-				let tTouch = this.touches[this.active[k]];
-
-				tTouch.fU = true;
-				tTouch.fD = false;
-
-				tTouch.up = true;
-				tTouch.down = false;
-
-				tTouch.upTime = 0;
-
-				if(!tTouch.moved) tTouch.fC = true;
-
-				if(tTouch.fC && tTouch.downTime <= TouchesController.CLICK_TIME && tTouch.upTime <= TouchesController.CLICK_GAP) {
-					tTouch.clickCount++;
-				} else tTouch.clickCount = 0;
-
-				tTouch['@end'].emit(tTouch, this, e);
-				if(tTouch.clickCount) tTouch['@click'].emit(tTouch, this, e);
-				if(tTouch.clickCount === 2) tTouch['@dblclick'].emit(tTouch, this, e);
-
-				this['@touchend'].emit(tTouch, this, e);
-				if(tTouch.clickCount) this['@touchclick'].emit(tTouch, this, e);
-				if(tTouch.clickCount === 2) this['@touchdblclick'].emit(tTouch, this, e);
-
-				tTouch.isActive = false;
-				this.active.splice(k, 1);
-			}
-		}, { passive: true });
-
-		el.addEventListener('touchmove', e => {
-			if(!filter(e)) return;
-
-			const box = el.getBoundingClientRect();
-
-			for(let i = 0; i < e.touches.length; i++) {
-				let id = e.touches[i].identifier;
-				let tTouch = this.touches[id];
-				let eTouch = e.touches[i];
-
-				const x = eTouch.pageX - box.left;
-				const y = eTouch.pageY - box.top;
-
-				if(tTouch && tTouch.pos[0] !== x && tTouch.pos[1] !== y) {
-					tTouch.pos[0] = x;
-					tTouch.pos[1] = y;
-
-					tTouch.fM = true;
-
-					tTouch.moved = true;
-
-					tTouch.s[0] = tTouch.pos[0]-tTouch.p[0];
-					tTouch.s[1] = tTouch.pos[1]-tTouch.p[1];
-					tTouch.p[0] = tTouch.pos[0];
-					tTouch.p[1] = tTouch.pos[1];
-
-					tTouch['@move'].emit(tTouch, eTouch, this, e);
-
-					this['@touchmove'].emit(tTouch, eTouch, this, e);
-				}
-			}
-		}, { passive: true });
+		return this;
 	}
+
+	public destroy(): this {
+		if(!this.el) return this;
+
+		this.el.removeEventListener('touchstart', this._onTouchStart);
+		this.el.removeEventListener('touchend', this._onTouchEnd);
+		this.el.removeEventListener('touchmove', this._onTouchMove);
+
+		for(let i = 0; i < this.touches.length; i++) this.touches[i].destroy();
+		this.events_off(true);
+
+		this.el = null;
+
+		return this;
+	}
+
+	protected _onTouchStart = (e: TouchEvent) => {
+		if(!this.el || !this.filter(e)) return;
+
+		const box = this.el.getBoundingClientRect();
+
+		if(e.touches.length > this.touches.length) this.touches.push(new Touch(this.touches.length));
+
+		for(let i = 0; i < e.touches.length; i++) {
+			let id = e.touches[i].identifier;
+			if(this.active.includes(id)) continue;
+
+			let tTouch = this.touches[id];
+			let eTouch = e.touches[i];
+
+			tTouch.up = false;
+			tTouch.down = true;
+
+			tTouch.downTime = 0;
+
+			tTouch.moved = false;
+
+			tTouch.fD = true;
+			tTouch.fP = true;
+
+			tTouch.b[0] = tTouch.pos[0] = eTouch.pageX - box.left;
+			tTouch.b[1] = tTouch.pos[1] = eTouch.pageY - box.top;
+
+			tTouch.isActive = true;
+			this.active.push(id);
+
+			tTouch['@start'].emit(tTouch, eTouch, this, e);
+
+			this['@touchstart'].emit(tTouch, eTouch, this, e);
+		}
+	};
+
+	protected _onTouchEnd = (e: TouchEvent) => {
+		if(!this.el || !this.filter(e)) return;
+
+		for(let k = 0; k < this.active.length; k++) {
+			let c = false;
+			for(let i = 0; i < e.touches.length; i++) {
+				if(this.active[k] === e.touches[i].identifier) c = true;
+			};
+			if(c) continue;
+
+			let tTouch = this.touches[this.active[k]];
+
+			tTouch.fU = true;
+			tTouch.fD = false;
+
+			tTouch.up = true;
+			tTouch.down = false;
+
+			tTouch.upTime = 0;
+
+			if(!tTouch.moved) tTouch.fC = true;
+
+			if(tTouch.fC && tTouch.downTime <= TouchesController.CLICK_TIME && tTouch.upTime <= TouchesController.CLICK_GAP) {
+				tTouch.clickCount++;
+			} else tTouch.clickCount = 0;
+
+			tTouch['@end'].emit(tTouch, this, e);
+			if(tTouch.clickCount) tTouch['@click'].emit(tTouch, this, e);
+			if(tTouch.clickCount === 2) tTouch['@dblclick'].emit(tTouch, this, e);
+
+			this['@touchend'].emit(tTouch, this, e);
+			if(tTouch.clickCount) this['@touchclick'].emit(tTouch, this, e);
+			if(tTouch.clickCount === 2) this['@touchdblclick'].emit(tTouch, this, e);
+
+			tTouch.isActive = false;
+			this.active.splice(k, 1);
+		}
+	};
+
+	protected _onTouchMove = (e: TouchEvent) => {
+		if(!this.el || !this.filter(e)) return;
+
+		const box = this.el.getBoundingClientRect();
+
+		for(let i = 0; i < e.touches.length; i++) {
+			let id = e.touches[i].identifier;
+			let tTouch = this.touches[id];
+			let eTouch = e.touches[i];
+
+			const x = eTouch.pageX - box.left;
+			const y = eTouch.pageY - box.top;
+
+			if(tTouch && tTouch.pos[0] !== x && tTouch.pos[1] !== y) {
+				tTouch.pos[0] = x;
+				tTouch.pos[1] = y;
+
+				tTouch.fM = true;
+
+				tTouch.moved = true;
+
+				tTouch.s[0] = tTouch.pos[0]-tTouch.p[0];
+				tTouch.s[1] = tTouch.pos[1]-tTouch.p[1];
+				tTouch.p[0] = tTouch.pos[0];
+				tTouch.p[1] = tTouch.pos[1];
+
+				tTouch['@move'].emit(tTouch, eTouch, this, e);
+
+				this['@touchmove'].emit(tTouch, eTouch, this, e);
+			}
+		}
+	};
 
 	public isDown() { return this.touches.some(i => i.isDown()); }
 	public isPress() { return this.touches.some(i => i.isPress()); }
@@ -146,13 +175,6 @@ export class TouchesController extends EventDispatcher {
 
 	public findTouch(cb = (touch: Touch) => touch.isPress()) { return this.touches.find(t => cb(t)) || null; }
 	public nullify(dt: number) { for(let i = 0; i < this.touches.length; i++) this.touches[i].nullify(dt); }
-
-
-	public destroy() {
-		for(let i = 0; i < this.touches.length; i++) this.touches[i].destroy();
-		this.events_off(true);
-	}
-
 
 	public *[Symbol.iterator]() {
 		for(let i = 0; i < this.touches.length; i++) if(this.touches[i].isActive) yield this.touches[i];

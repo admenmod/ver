@@ -3,6 +3,8 @@ import { Event, EventDispatcher } from './events.js';
 
 
 export class Viewport<T extends CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D = OffscreenCanvasRenderingContext2D> extends EventDispatcher {
+	public viewport = this;
+
 	public '@move' = new Event<Viewport<T>, [position: Vector2]>(this);
 	public '@scale' = new Event<Viewport<T>, [scale: Vector2]>(this);
 	public '@resize' = new Event<Viewport<T>, [size: Vector2]>(this);
@@ -32,6 +34,8 @@ export class Viewport<T extends CanvasRenderingContext2D | OffscreenCanvasRender
 
 	constructor(public ctx: T, public pixelRatio: number = window.devicePixelRatio || 1) {
 		super();
+
+		Object.defineProperty(this, 'viewport', { enumerable: false });
 
 		this.size.set(this.ctx.canvas.width, this.ctx.canvas.height);
 	}

@@ -62,7 +62,7 @@ export class CanvasLayers extends EventDispatcher {
 
 	public resizeobserver!: ResizeObserver;
 
-	public canvas!: HTMLCanvasElement;
+	public canvas: HTMLCanvasElement | null = null;
 	public ctx: CanvasRenderingContext2D | null = null;
 
 	constructor(getContext = (canvas: HTMLCanvasElement, pixelRatio: number) => canvas.getContext('2d')) {
@@ -111,7 +111,7 @@ export class CanvasLayers extends EventDispatcher {
 
 		this['@destroy'].emit();
 
-		this.resizeobserver.unobserve(this.canvas);
+		this.resizeobserver.unobserve(this.canvas!);
 
 		this['@destroyed'].emit();
 
@@ -159,8 +159,10 @@ export class CanvasLayers extends EventDispatcher {
 		this.#width = this.#box_width * this.#pixelRatio;
 		this.#height = this.#box_height * this.#pixelRatio;
 
-		this.canvas.width = this.#width;
-		this.canvas.height = this.#height;
+		if(this.canvas) {
+			this.canvas.width = this.#width;
+			this.canvas.height = this.#height;
+		}
 
 		for(const layer of this.layers) {
 			layer.canvas.width = this.#width;
@@ -175,7 +177,7 @@ export class CanvasLayers extends EventDispatcher {
 	public get(id: string) { return this.layers.find(i => i.id === id); }
 
 	public create(id: string, zIndex: number = 0, shift: boolean = false): ShadowLayer {
-		const layer = new ShadowLayer(id, this.canvas, zIndex);
+		const layer = new ShadowLayer(id, this.canvas || new Vector2(200, 350), zIndex);
 
 		if(!shift) this.layers.push(layer);
 		else this.layers.unshift(layer);

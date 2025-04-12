@@ -187,11 +187,21 @@ export class Scene extends EventDispatcher {
 
 	public get SCENE_TYPE() { return this.constructor.name; }
 
+
+	public static '@instance' = new Event<typeof this, [scene: Scene, Scene: typeof this]>(this);
+
+	/** @virtual */
+	protected static _instance(scene: Scene, Class: typeof this): void {}
+
 	constructor() {
 		super();
 
 		if(!this.isLoaded) throw new Error(`(${this.SCENE_TYPE}) you can't instantiate a scene before it's loaded`);
+
+		new.target._instance(this, new.target);
+		new.target['@instance'].emit(this, new.target);
 	}
+
 
 	private __generate_tree(): void {
 		if(!this.isLoaded) throw new Error(`(${this.name}) you can't instantiate a scene before it's loaded`);

@@ -1,15 +1,77 @@
+export const throwError = (error: unknown): never => { throw error; };
+
+type AnyArray<T = any> = T[];
+
+export type Err<T extends AnyArray> = [never, T];
+
+export type Default<T, D> = [T] extends [never] ? D : T;
+export type IfNever<T, Y, N> = [T] extends [never] ? N : Y;
+
+export type PushArrIfNotNever<Arr extends AnyArray, T> = [T] extends [never] ? [...Arr] : [...Arr, T];
+export type PushAccIfNotEqual<T, V, Acc extends AnyArray = []> = [T] extends [V] ? [...Acc] : [...Acc, T];
+
+
+export declare namespace calc {
+	type INT = unknown[];
+	type ONE = [0];
+	type ZERO = [];
+
+	type N<T extends INT> = T['length'];
+	type Plus<A extends INT, B extends INT> = [...A, ...B];
+	type Minus<A extends INT, B extends INT> = A extends [...B, ...infer D] ? D : never;
+
+	type Next<A extends INT> = Plus<A, ONE>;
+	type Prev<A extends INT> = Minus<A, ONE>;
+
+	type Int<T extends number, Acc extends INT = ZERO> = T extends N<Acc> ? Acc : Int<T, Next<Acc>>;
+	type Indexs<T extends INT, A extends INT = ZERO> = N<T> extends N<A> ? A : Indexs<T, [...A, N<A>]>;
+}
+
 export declare namespace list {
-	export type head<T extends any[]> = T extends [infer R, ...any[]] ? R : never;
-	export type last<T extends any[]> = T extends [...any[], infer R] ? R : never;
-	export type apex<T extends any[]> = T extends [...infer R, any] ? R : never;
-	export type tail<T extends any[]> = T extends [any, ...infer R] ? R : never;
+	type remove<Arr extends AnyArray, T, Acc extends AnyArray = []> =
+		Arr extends [infer _, ...infer __] ? remove<__, T, PushAccIfNotEqual<_, T, Acc>> : Acc;
+
+	export type head<T extends AnyArray> = T extends [infer R, ...AnyArray] ? R : never;
+	export type last<T extends AnyArray> = T extends [...AnyArray, infer R] ? R : never;
+	export type apex<T extends AnyArray> = T extends [...infer R, any] ? R : never;
+	export type tail<T extends AnyArray> = T extends [any, ...infer R] ? R : never;
+
+	export type getByI<Arr extends AnyArray, I extends number, D = never> = `${I}` extends keyof Arr ? Arr[I] : D;
+	export type setByI<Arr extends AnyArray, I extends number, T> = { [K in keyof Arr]: K extends `${I}` ? T : Arr[K]; };
+
+	export type flat<T extends AnyArray<AnyArray>> =
+		T extends [infer _ extends AnyArray, ...infer __ extends AnyArray<AnyArray>] ? [..._, ...flat<__>] : [];
+
+	type IfUnknownToNever<T> = [unknown] extends [T] ? never : T;
+
+	export type AND<T extends AnyArray> = T extends [infer _, ...infer __] ? _ & AND<__> : unknown;
+	export type OR<T extends AnyArray> = T extends [infer _, ...infer __] ? _ | OR<__> : never;
+
+	export type splitByCondition<T extends any[], C, Inc extends C[] = [], Exc extends any[] = []> =
+		T extends [infer R, ...infer _]
+			? [R] extends [never]
+				? [C] extends [never]
+					? splitByCondition<_, C, [...Inc, R], Exc>
+					: splitByCondition<_, C, Inc, [...Exc, R]>
+				: R extends C
+			? splitByCondition<_, C, [...Inc, R], Exc>
+			: splitByCondition<_, C, Inc, [...Exc, R]>
+		: [Inc, Exc];
+
+	export type pushToSet<Acc extends any[], T> = [T] extends [never] ? Acc : T extends Acc[number] ? Acc : [...Acc, T];
 }
 
 export declare namespace object {
-	export type assign<T extends any[]> = T extends [infer R] ? R : list.head<T> & assign<list.tail<T>>;
+	export type assign<T extends AnyArray> = list.AND<T>;
+
+	type StringtoNumber<T> = T extends `${infer R extends number}` ? R : never;
+	type S<T extends AnyArray, K extends keyof T = keyof T> = K extends `${number}` ? StringtoNumber<K> : never;
+
+	export type keys<T> = T extends AnyArray ? S<T> : keyof T;
+	export type values<T> = T extends AnyArray ?  T[number] : T[keyof T];
 }
 
-export type Fn<T = any, A extends any[] | readonly any[] = any, R = any> = (this: T, ...args: A) => R;
+export type Fn<T = any, A extends AnyArray = any, R = any> = (this: T, ...args: A) => R;
 export declare namespace Fn {
 	type T<F extends Fn> = F extends Fn<infer T, any, any> ? T : never;
 	type A<F extends Fn> = F extends Fn<any, infer A, any> ? A : never;
